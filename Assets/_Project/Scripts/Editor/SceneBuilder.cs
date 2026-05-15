@@ -23,22 +23,26 @@ public static class SceneBuilder
     static readonly Vector2Int[] GroundTiles = BuildGroundTiles();
     static readonly Vector2Int[] PlatformTiles = BuildPlatformTiles();
 
-    // 3. Координаты монеток в мире
+    // 3. Координаты монеток в мире. Монета — спрайт 128x128 при PPU=128,
+    // т.е. 1x1 unit, центр на transform. Чтобы нижний край касался верха
+    // тайла (y=1 для тайла земли на y=0), центр должен быть на y=1.5.
     static readonly Vector2[] CoinPositions = new Vector2[]
     {
-        new Vector2(2.5f, 1.5f),
-        new Vector2(5f, 4f),
-        new Vector2(12.5f, 1.5f),
-        new Vector2(16f, 5f),
-        new Vector2(21.5f, 6f),
-        new Vector2(24.5f, 1.5f),
-        new Vector2(29.5f, 1.5f),
-        new Vector2(32.5f, 1.5f),
+        new Vector2(2.5f, 1.5f),    // на стартовой земле
+        new Vector2(5.5f, 4.5f),    // на платформе y=3
+        new Vector2(12.5f, 1.5f),   // между ямами
+        new Vector2(16f, 5.5f),     // на платформе y=4
+        new Vector2(21.5f, 6.5f),   // на самой высокой платформе y=5
+        new Vector2(24.5f, 1.5f),   // перед второй ямой
+        new Vector2(29.5f, 1.5f),   // на финишной земле
+        new Vector2(32.5f, 1.5f),   // перед флагом
     };
 
-    // 4. Стартовая точка игрока и позиция финиша
-    static readonly Vector2 PlayerStart = new Vector2(1f, 2.5f);
-    static readonly Vector2 FinishPosition = new Vector2(34f, 1.5f);
+    // 4. Стартовая точка и финиш. Игрок при стоянии на земле должен иметь
+    // transform.y ≈ 1.72 (центр спрайта 184px при PPU=128 = 1.44 unit).
+    // Стартуем чуть выше, чтобы было видно падение.
+    static readonly Vector2 PlayerStart = new Vector2(1f, 4f);
+    static readonly Vector2 FinishPosition = new Vector2(34f, 1.75f);
 
     [MenuItem("Tools/Build Main Scene")]
     public static void Build()
@@ -150,9 +154,15 @@ public static class SceneBuilder
         vcam.Lens.NearClipPlane = -10f;
         vcam.Target.TrackingTarget = target;
 
-        // 24. Добавляем компонент Follow для плавного слежения
+        // 24. CinemachineFollow с асимметричным damping:
+        // X — быстро (0.2 сек), чтобы камера не отставала при беге;
+        // Y — очень медленно (3 сек), чтобы прыжок не уносил камеру вверх
+        // и игрок всегда видел землю под собой.
+        // Offset.Y = 2 поднимает обзор так, что в кадре больше неба сверху,
+        // и игроку всегда видно куда прыгать.
         var follow = go.AddComponent<CinemachineFollow>();
-        follow.FollowOffset = new Vector3(0, 1f, -10f);
+        follow.FollowOffset = new Vector3(0, 2f, -10f);
+        follow.TrackerSettings.PositionDamping = new Vector3(0.2f, 3f, 0f);
     }
 
     // ===== Игрок =====
@@ -165,7 +175,7 @@ public static class SceneBuilder
 
         // Спрайт
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = LoadSprite("Assets/_Project/Kenney/Player/alienBlue_stand.png");
+        sr.sprite = LoadSprite("Assets/_Project/Kenney/Player/alienPink_stand.png");
         sr.sortingOrder = 10;
 
         // 25. Физика: Rigidbody2D + CapsuleCollider2D
@@ -175,10 +185,14 @@ public static class SceneBuilder
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
+        // Спрайт игрока 133x184 при PPU=128 → 1.04x1.44 unit, центр в (0,0).
+        // Коллайдер чуть уже и немного короче спрайта, со сдвигом offset.y=-0.07,
+        // чтобы нижний край коллайдера совпал с нижним краем спрайта (ноги).
+        // При стоянии на земле игрок будет ровно ступать на верх тайла.
         var col = go.AddComponent<CapsuleCollider2D>();
         col.direction = CapsuleDirection2D.Vertical;
-        col.size = new Vector2(0.45f, 0.85f);
-        col.offset = new Vector2(0, 0);
+        col.size = new Vector2(0.55f, 1.3f);
+        col.offset = new Vector2(0, -0.07f);
 
         // 26. Контроллер игрока (поля назначим в ConfigurePlayerComponents)
         go.AddComponent<PlayerController>();
@@ -187,10 +201,12 @@ public static class SceneBuilder
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
 
-        // 28. GroundCheck — пустой дочерний объект внизу
+        // 28. GroundCheck чуть ниже нижнего края коллайдера (нижний край
+        // спрайта на localY=-0.72; ставим круг на -0.7, чтобы радиус 0.15
+        // перекрывал верх земли при стоянии).
         var gc = new GameObject("GroundCheck");
         gc.transform.parent = go.transform;
-        gc.transform.localPosition = new Vector3(0, -0.5f, 0);
+        gc.transform.localPosition = new Vector3(0, -0.7f, 0);
 
         return go;
     }
@@ -202,10 +218,10 @@ public static class SceneBuilder
         // Маска для ground-check: либо по имени, либо по индексу 6 как фолбэк
         var idx = LayerMask.NameToLayer("Ground");
         pc.groundLayer = idx >= 0 ? (1 << idx) : (1 << 6);
-        pc.standSprite = LoadSprite("Assets/_Project/Kenney/Player/alienBlue_stand.png");
-        pc.walk1Sprite = LoadSprite("Assets/_Project/Kenney/Player/alienBlue_walk1.png");
-        pc.walk2Sprite = LoadSprite("Assets/_Project/Kenney/Player/alienBlue_walk2.png");
-        pc.jumpSprite = LoadSprite("Assets/_Project/Kenney/Player/alienBlue_jump.png");
+        pc.standSprite = LoadSprite("Assets/_Project/Kenney/Player/alienPink_stand.png");
+        pc.walk1Sprite = LoadSprite("Assets/_Project/Kenney/Player/alienPink_walk1.png");
+        pc.walk2Sprite = LoadSprite("Assets/_Project/Kenney/Player/alienPink_walk2.png");
+        pc.jumpSprite = LoadSprite("Assets/_Project/Kenney/Player/alienPink_jump.png");
         pc.jumpClip = LoadClip("Assets/_Project/Audio/jump.wav");
 
         EditorUtility.SetDirty(pc);
@@ -332,7 +348,9 @@ public static class SceneBuilder
         {
             var go = new GameObject($"Coin_{pos.x:F0}_{pos.y:F0}");
             go.transform.position = pos;
-            go.transform.localScale = Vector3.one * 0.6f;
+            // Монета в натуральную величину (1 unit = размер тайла) — сразу
+            // видно и не проваливается в землю.
+            go.transform.localScale = Vector3.one;
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = coinSprite;
@@ -369,10 +387,12 @@ public static class SceneBuilder
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = LoadSprite("Assets/_Project/Kenney/Items/finishFlag.png");
         sr.sortingOrder = 4;
-        go.transform.localScale = Vector3.one * 0.8f;
+        // Флаг 1x1 unit при scale 1.5 → 1.5x1.5; центр на y=1.75 ставит
+        // нижний край на y=1 (поверх тайла земли).
+        go.transform.localScale = Vector3.one * 1.5f;
 
         var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(0.7f, 1.5f);
+        col.size = new Vector2(0.7f, 1.0f);
         col.isTrigger = true;
 
         go.AddComponent<FinishZone>();

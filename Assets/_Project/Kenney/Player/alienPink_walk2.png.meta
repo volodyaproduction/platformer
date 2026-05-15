@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c456e7b79936842a8b2629194e10f00c
+guid: fbc1f2294662a43e399d12fc025f5bf0
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7275200586497731420
-    second: alienBlue_walk1_0
+      213: -1103869511612750716
+    second: alienPink_walk2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: alienBlue_walk1_0
+      name: alienPink_walk2_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 134
-        height: 190
+        width: 140
+        height: 195
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c5b29e34364b6f460800000000000000
-      internalID: 7275200586497731420
+      spriteID: 48420f917844ea0f0800000000000000
+      internalID: -1103869511612750716
       vertices: []
       indices: 
       edges: []

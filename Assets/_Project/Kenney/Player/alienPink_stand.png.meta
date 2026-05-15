@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 3780d4ba6ada04e62bb864eab1f9bf0b
+guid: c0eb691171687432ea891a1c67101800
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -2675317404607825922
-    second: alienBlue_stand_0
+      213: -4473562622089305303
+    second: alienPink_stand_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,7 +113,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: alienBlue_stand_0
+      name: alienPink_stand_0
       rect:
         serializedVersion: 2
         x: 0
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ef73ee4befc5fdad0800000000000000
-      internalID: -2675317404607825922
+      spriteID: 923e6e54f76bae1c0800000000000000
+      internalID: -4473562622089305303
       vertices: []
       indices: 
       edges: []
