@@ -55,7 +55,7 @@ public static class SceneBuilder
         var scene = EditorSceneManager.NewScene(
             NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-        // 6. Главная камера + CinemachineBrain
+        // 6. Главная камера (без Cinemachine — следим только за X)
         var mainCamera = CreateMainCamera();
 
         // 7. Игрок
@@ -64,8 +64,8 @@ public static class SceneBuilder
         // 8. Тайлмап со слоем Ground + платформы
         CreateTilemap();
 
-        // 9. Cinemachine-камера, привязанная к игроку
-        CreateCinemachineCamera(player.transform);
+        // 9. Привязываем камеру к игроку — только по X, Y фиксированный
+        AttachCameraFollow(mainCamera.gameObject, player.transform);
 
         // 10. VFX-префаб для эффекта сбора монеты
         var vfxPrefab = CreateCoinPickupVfxPrefab();
@@ -138,31 +138,21 @@ public static class SceneBuilder
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.nearClipPlane = -10f;
         cam.farClipPlane = 100f;
-        camGO.transform.position = new Vector3(0, 5, -10);
-
-        // CinemachineBrain — обязательный компонент главной камеры
+        camGO.transform.position = new Vector3(0, 3f, -10);
         camGO.AddComponent<AudioListener>();
-        camGO.AddComponent<CinemachineBrain>();
         return cam;
     }
 
-    static void CreateCinemachineCamera(Transform target)
+    static void AttachCameraFollow(GameObject mainCamGO, Transform target)
     {
-        var go = new GameObject("CinemachineCamera");
-        var vcam = go.AddComponent<CinemachineCamera>();
-        vcam.Lens.OrthographicSize = 6f;
-        vcam.Lens.NearClipPlane = -10f;
-        vcam.Target.TrackingTarget = target;
-
-        // 24. CinemachineFollow с асимметричным damping:
-        // X — быстро (0.2 сек), чтобы камера не отставала при беге;
-        // Y — очень медленно (3 сек), чтобы прыжок не уносил камеру вверх
-        // и игрок всегда видел землю под собой.
-        // Offset.Y = 2 поднимает обзор так, что в кадре больше неба сверху,
-        // и игроку всегда видно куда прыгать.
-        var follow = go.AddComponent<CinemachineFollow>();
-        follow.FollowOffset = new Vector3(0, 2f, -10f);
-        follow.TrackerSettings.PositionDamping = new Vector3(0.2f, 3f, 0f);
+        // 24. Камера следит только по X с зафиксированным Y. Cinemachine
+        // даже с большим Y-damping всё равно «всплывал» вверх при долгом
+        // нахождении игрока в воздухе. Жёсткая фиксация Y — самый надёжный
+        // способ всегда видеть землю.
+        var follow = mainCamGO.AddComponent<CameraFollowX>();
+        follow.target = target;
+        follow.fixedY = 3f;
+        follow.fixedZ = -10f;
     }
 
     // ===== Игрок =====
