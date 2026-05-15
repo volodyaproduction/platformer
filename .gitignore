@@ -3,10 +3,13 @@
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
-[Bb]uild/
-[Bb]uilds/
+/[Bb]uild/
+/[Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
+
+# Не игнорить WebGL-вывод внутри web/Build (это нужно для Vercel)
+!web/Build/
 
 # MemoryCaptures можно игнорировать или коммитить — оставляем игнор
 [Mm]emoryCaptures/
