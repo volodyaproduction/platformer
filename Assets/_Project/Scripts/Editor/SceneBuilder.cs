@@ -236,15 +236,13 @@ public static class SceneBuilder
         var renderer = tilemapGO.AddComponent<TilemapRenderer>();
         renderer.sortingOrder = 0;
 
-        // 30. Rigidbody2D-Static + CompositeCollider2D + TilemapCollider2D
-        var rb = tilemapGO.AddComponent<Rigidbody2D>();
-        rb.bodyType = RigidbodyType2D.Static;
-
+        // 30. Простой TilemapCollider2D без CompositeCollider2D.
+        // CompositeCollider2D в batch-mode не успевает сгенерировать
+        // геометрию до сохранения сцены (m_CompositePaths остаётся пустым),
+        // из-за чего игрок падает сквозь землю. TilemapCollider2D одиночно
+        // даёт отдельный коллайдер на каждый тайл, для простого уровня этого
+        // достаточно.
         var tilemapCollider = tilemapGO.AddComponent<TilemapCollider2D>();
-        tilemapCollider.compositeOperation = Collider2D.CompositeOperation.Merge;
-
-        var composite = tilemapGO.AddComponent<CompositeCollider2D>();
-        composite.geometryType = CompositeCollider2D.GeometryType.Polygons;
 
         // 31. Создаём Tile-ассеты на лету и красим
         var grassMid = CreateTileAsset("grassMid",
