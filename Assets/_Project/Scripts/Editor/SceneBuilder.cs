@@ -479,7 +479,7 @@ public static class SceneBuilder
         scoreGO.transform.SetParent(canvasGO.transform, false);
         var scoreText = scoreGO.AddComponent<Text>();
         scoreText.text = "Монеты: 0 / 0";
-        scoreText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        scoreText.font = LoadFont();
         scoreText.fontSize = 48;
         scoreText.color = Color.white;
         scoreText.alignment = TextAnchor.UpperLeft;
@@ -511,7 +511,7 @@ public static class SceneBuilder
         winTextGO.transform.SetParent(winPanel.transform, false);
         var winText = winTextGO.AddComponent<Text>();
         winText.text = "Вы победили!";
-        winText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        winText.font = LoadFont();
         winText.fontSize = 96;
         winText.color = Color.white;
         winText.alignment = TextAnchor.MiddleCenter;
@@ -539,7 +539,7 @@ public static class SceneBuilder
         btnTextGO.transform.SetParent(btnGO.transform, false);
         var btnText = btnTextGO.AddComponent<Text>();
         btnText.text = "Заново";
-        btnText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        btnText.font = LoadFont();
         btnText.fontSize = 44;
         btnText.color = Color.white;
         btnText.alignment = TextAnchor.MiddleCenter;
@@ -589,6 +589,16 @@ public static class SceneBuilder
     }
 
     // ===== Утилиты =====
+
+    static Font LoadFont()
+    {
+        // Roboto-Regular поддерживает кириллицу — встроенный LegacyRuntime.ttf
+        // не имеет славянских глифов, поэтому русский текст не отображается.
+        var f = AssetDatabase.LoadAssetAtPath<Font>(
+            "Assets/_Project/Fonts/Roboto-Regular.ttf");
+        if (f == null) Debug.LogWarning("[SceneBuilder] Roboto не найден");
+        return f;
+    }
 
     static Sprite LoadSprite(string path)
     {
