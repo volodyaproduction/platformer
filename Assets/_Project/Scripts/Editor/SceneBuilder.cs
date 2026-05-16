@@ -73,9 +73,10 @@ public static class SceneBuilder
         // 11. Монеты, привязанные к VFX
         SpawnCoins(vfxPrefab);
 
-        // 12. KillZone под уровнем + FinishZone справа
+        // 12. KillZone под уровнем + FinishZone справа + Ceiling сверху
         CreateKillZone();
         CreateFinishZone();
+        CreateCeiling();
 
         // 13. UI: Canvas со счётом и панелью победы + кнопка рестарта
         var (scoreText, winPanel) = CreateUI(out var restartButton);
@@ -353,6 +354,19 @@ public static class SceneBuilder
             var coin = go.AddComponent<Coin>();
             coin.pickupVfxPrefab = vfxPrefab;
         }
+    }
+
+    // ===== Невидимый потолок (не даёт выпрыгнуть за камеру) =====
+
+    static void CreateCeiling()
+    {
+        // Камера фиксирована на Y=3 с orthographicSize=6 → верх кадра y=9.
+        // Ставим невидимый коллайдер ровно по верхней границе кадра,
+        // чтобы игрок при двойном прыжке упирался и не вылетал «в небо».
+        var go = new GameObject("Ceiling");
+        go.transform.position = new Vector3(17.5f, 9.5f, 0);
+        var col = go.AddComponent<BoxCollider2D>();
+        col.size = new Vector2(60f, 1f);
     }
 
     // ===== KillZone и Финиш =====
