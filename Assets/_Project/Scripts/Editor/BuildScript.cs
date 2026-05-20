@@ -20,6 +20,9 @@ public static class BuildScript
 
     public static void BuildWindows()
     {
+        // Регенерируем сцену, чтобы сборка была одношаговой
+        SceneBuilder.Build();
+
         EnsureDirectory(WinOutDir);
 
         // 1. Настройки качества и компании
@@ -41,6 +44,9 @@ public static class BuildScript
 
     public static void BuildWebGL()
     {
+        // Регенерируем сцену, чтобы сборка была одношаговой
+        SceneBuilder.Build();
+
         EnsureDirectory(WebOutDir);
 
         // 2. WebGL-настройки: Brotli, Fallback ON, потоки выкл,
