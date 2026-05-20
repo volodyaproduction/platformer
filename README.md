@@ -1,135 +1,240 @@
 # 2D-платформер на Unity 6
 
-Игра-платформер для веба, собранная на **Unity 6.3 LTS (6000.3.15f1)**. Цель — пробежать уровень, собрать монеты и дойти до флага. Поддерживаются десктоп-браузеры и Windows.
+Небольшой классический платформер: добежать до флага, собрать монеты, не упасть в ямы. Собрано на **Unity 6.3 LTS (6000.3.15f1)** в headless-режиме — Unity Editor вручную не открывался.
 
-## Как играть
+- **WebGL-демо:** ссылка добавится после деплоя на Vercel
 
-- **WebGL (браузер):** ссылка добавится сюда после деплоя на Vercel
-- **Windows .exe:** см. ниже инструкцию по сборке локально
+## Управление
 
-**Управление:**
-- Движение — `A` / `D` или стрелки `←` / `→`
-- Прыжок — `Space` (доступен двойной прыжок: ещё один раз в воздухе)
-- При падении в яму уровень рестартуется автоматически
+- **A / D** или **← / →** — движение
+- **Space** — прыжок (доступен двойной)
+- Падение в яму → автоматический рестарт уровня
 
 ## Функционал по ТЗ
 
-- [x] Управление персонажем с клавиатуры
-- [x] Прыжок с проверкой касания земли (`Physics2D.OverlapCircle` + `LayerMask Ground`)
-- [x] Сбор монет, счётчик в UI («Монеты: N / total»)
-- [x] Финиш-зона с надписью «Вы победили!» и кнопкой «Заново»
-- [x] WebGL-билд для браузера
-- [x] Windows-билд `.exe`
+- [x] Движение влево/вправо и прыжок (с проверкой касания земли)
+- [x] Уровень из платформ и земли, две ямы и три навесные платформы
+- [x] Монеты — собираются касанием, исчезают
+- [x] UI-счётчик собранных монет (`Монеты: N / total`)
+- [x] Финиш-зона с надписью «Вы победили!» и кнопкой рестарта
 
-**Бонусы:**
-- Двойной прыжок (`jumpsLeft = 2`, сбрасывается при касании земли)
-- Эффект частиц при сборе монеты (жёлтые искры, авто-уничтожение)
-- Звуковые эффекты: прыжок, сбор монеты, победа
-- KillZone под уровнем — падение в яму = автоматический рестарт
+**Сделано из дополнительных:**
 
-## Архитектура
+- [x] Двойной прыжок (`jumpsLeft = 2`, сбрасывается при касании земли)
+- [x] Эффект частиц при сборе монеты (жёлтые искры, авто-уничтожение)
+- [x] Звуковые эффекты: прыжок, сбор монеты, победа
+- [x] KillZone под уровнем — падение в яму = автоматический рестарт
 
-### Скрипты и их связи
+---
 
-```
-PlayerController  ──▶ Rigidbody2D, ground-check, анимация спрайтов, звук прыжка
-       │
-       │ Player-тег
-       ▼
-  Coin (trigger)   ──▶ GameManager.AddCoin()  ──▶ +счётчик, звук, обновление UI
-  KillZone         ──▶ GameManager.Restart()  ──▶ SceneManager.LoadScene
-  FinishZone       ──▶ GameManager.Win()      ──▶ Win-panel, звук победы
+## Сборка и запуск
 
-GameManager (singleton):
-  - scoreText, winPanel — обновляются напрямую
-  - sfxSource — один AudioSource, играет PlayOneShot
-  - coinClip, victoryClip — клипы
-```
+### 1. Сборка веб-билда
 
-### Ключевые тонкости
-
-- **Ввод в `Update`, физика в `FixedUpdate`** — на разных FPS поведение остаётся одинаковым.
-- **`CompositeCollider2D` на тайлмапе** — один сплошной коллайдер на всю землю, нет «застреваний» в швах между плитками.
-- **Тэг `Player` + слой `Ground`** настроены в `ProjectSettings/TagManager.asset`. Триггеры проверяют тег, ground-check — слой через `LayerMask`.
-- **WebGL: `Decompression Fallback = ON`** — Unity сам распаковывает Brotli в JS, не зависит от заголовков хостинга (Vercel работает без `vercel.json`).
-
-### Структура папок
-
-```
-Assets/_Project/
-  Scenes/Main.unity         ← собирается из кода SceneBuilder.cs
-  Scripts/
-    Gameplay/               ← PlayerController, Coin, KillZone, FinishZone
-    Systems/                ← GameManager
-    Editor/                 ← SceneBuilder, BuildScript, KenneyTexturePostprocessor
-  Art/Tilemaps/             ← Tile-ассеты, генерируются SceneBuilder
-  Prefabs/CoinPickupVfx.prefab  ← VFX, генерируется SceneBuilder
-  Kenney/                   ← спрайты (Player, Ground, Items, Backgrounds)
-  Audio/                    ← jump.wav, coin.wav, victory.wav
-web/                        ← WebGL-билд (для Vercel)
-build/Windows/              ← Windows-билд (локально, не в git)
-```
-
-## Запуск и сборка локально
-
-### Требования
-
-- Unity Hub
-- **Unity 6.3 LTS (6000.3.15f1)** с модулями **Web Build Support** и **Windows Build Support (Mono)**
-
-### Открыть проект в Unity Editor
-
-1. Клонировать репозиторий
-2. В Unity Hub: `Open` → выбрать папку `platformer/`
-3. Unity сам импортирует ассеты и откроет сцену `Assets/_Project/Scenes/Main.unity`
-4. Нажать `Play`
-
-### Сборка из CLI (как делается в этом репо)
-
-Создание / пересборка сцены:
 ```bash
-"/Applications/Unity/Hub/Editor/6000.3.15f1/Unity.app/Contents/MacOS/Unity" \
-  -batchmode -projectPath . \
-  -executeMethod SceneBuilder.Build \
-  -quit -nographics -logFile /tmp/unity.log
+cd platformer
+./build.sh        # web — дефолт
 ```
 
-Windows-билд (`.exe`):
-```bash
-"/Applications/Unity/Hub/Editor/6000.3.15f1/Unity.app/Contents/MacOS/Unity" \
-  -batchmode -projectPath . \
-  -executeMethod BuildScript.BuildWindows \
-  -quit -nographics -logFile /tmp/unity-build-win.log
-```
+Результат — в `web/`. Готово к деплою на любой статический хостинг (Vercel, Netlify, GitHub Pages, itch.io). Размер ~9 МБ по сети после Brotli.
 
-WebGL-билд:
-```bash
-"/Applications/Unity/Hub/Editor/6000.3.15f1/Unity.app/Contents/MacOS/Unity" \
-  -batchmode -projectPath . \
-  -executeMethod BuildScript.BuildWebGL \
-  -quit -nographics -logFile /tmp/unity-build-web.log
-```
+Скрипт ожидает Unity по дефолтному пути Unity Hub. Если у тебя другое расположение — `UNITY=/path/to/Unity ./build.sh`. Полная команда CLI и пояснение флагов — в разделе [«Unity CLI»](#unity-cli-как-создавался-проект) ниже.
 
-Результаты: `build/Windows/Platformer.exe` и `web/index.html`.
+### 2. Локальный запуск в браузере
 
-## Деплой на Vercel
+Двойным кликом по `web/index.html` игра **не откроется** — браузер из соображений безопасности запрещает WebAssembly-приложениям загружать соседние файлы (`.wasm`, `.data`) напрямую с диска. Эти файлы должны прийти по HTTP. Поэтому нужно поднять локальный HTTP-сервер в папке `web/`.
 
-`web/` содержит готовый WebGL-билд, `index.html` в корне папки. Деплой:
+Проще всего — встроенный сервер из **Python 3** (на macOS он установлен по умолчанию, на Linux — через пакетный менеджер):
 
 ```bash
 cd web
-vercel --prod
+python3 -m http.server 3000
+# открыть в браузере http://localhost:3000/
 ```
 
-Либо через dashboard: подключить репо, root = `web/`. `vercel.json` не нужен — `Decompression Fallback = ON` делает Unity-лоадер независимым от заголовков сервера.
+Если Python не хочется — подойдёт любой статический файловый сервер: `npx serve` (нужен Node.js), `caddy file-server`, VS Code расширение «Live Server» и т.п. Python выбран потому, что он почти всегда уже есть на машине разработчика и команда — однострочник.
 
-## Поддерживаемые платформы
+### 3. Сборка `.exe` для Windows
 
-- **Десктоп:** Chrome, Firefox, Safari, Edge — последние версии
-- **Мобильный браузер:** Unity 6 официально поддерживает iOS Safari 15+ / Android Chrome 58+ ([Unity Manual](https://docs.unity3d.com/6000.3/Documentation/Manual/webgl-browsercompatibility.html)), но производительность зависит от устройства, отдельной оптимизации под мобайл нет.
-- **Первая загрузка WebGL:** 5–15 секунд при размере билда ~9 МБ после Brotli.
+```bash
+cd platformer
+./build.sh win
+```
 
-## Источники ассетов и лицензии
+Результат — `build/Windows/Platformer.exe` (запуск с `Platformer_Data/` и `UnityPlayer.dll` рядом). Кросс-билд с macOS работает; для запуска нужна Windows-машина.
 
-- **Спрайты:** [Kenney Platformer Pack Redux](https://kenney.nl/assets/platformer-pack-redux), лицензия **CC0** (см. `Assets/_Project/Kenney/License.txt`)
-- **Звуки:** [8-bit platformer SFX by tcpixel](https://opengameart.org/content/8-bit-platformer-sfx), лицензия **CC-BY 3.0**
+### 4. Деплой на Vercel
+
+В dashboard Vercel: **New Project** → выбрать репозиторий `platformer` → в **Build and Output Settings** установить **Output Directory = `web`** → **Deploy**. Vercel раздаёт уже собранный билд из `web/`, ничего не собирает сам.
+
+---
+
+## Структура проекта
+
+Разбита по назначению: что выполняется в игре, что только собирает проект, где ассеты, где результаты сборки.
+
+### Игровой код (попадает в билд) — 291 строка
+
+```
+Assets/_Project/Scripts/
+├── Gameplay/
+│   ├── PlayerController.cs   ← движение, прыжок, ground-check
+│   ├── Coin.cs               ← триггер сбора монеты
+│   ├── KillZone.cs           ← рестарт при падении в яму
+│   ├── FinishZone.cs         ← победа при касании флага
+│   └── CameraFollowX.cs      ← камера следит по X с фикс. Y
+└── Systems/
+    └── GameManager.cs        ← singleton, счётчик, UI, аудио
+```
+
+Сам платформер компактный — пять gameplay-скриптов и один менеджер.
+
+### Editor-инфраструктура (в билд **не** попадает) — 760 строк
+
+```
+Assets/_Project/Scripts/Editor/
+├── SceneBuilder.cs                  ← собирает Main.unity (638 LOC)
+├── BuildScript.cs                   ← BuildWebGL / BuildWindows
+└── KenneyTexturePostprocessor.cs    ← PPU=128 для импорта спрайтов Kenney
+```
+
+**Что конкретно делает `SceneBuilder.cs`:** создаёт пустую сцену `Main.unity`, добавляет в неё камеру, игрока с Rigidbody2D и анимацией, тайлмап с травой (32 тайла земли + 8 платформенных), 8 монет в конкретных координатах, KillZone под уровнем, флаг финиша, Canvas со счётчиком и win-panel с кнопкой рестарта, привязывает `Restart()` к кнопке через `SerializedObject`.
+
+**Если бы открывали Unity Editor вручную, этой папки бы вообще не было:** камера, игрок, тайлмап, UI расставляются мышкой в окне Hierarchy, ссылки на компоненты протаскиваются в инспекторе. Все 638 строк `SceneBuilder.cs` — это замена этих кликов мышкой через `EditorSceneManager.NewScene()`, `gameObject.AddComponent<>()`, `SerializedObject.FindProperty()`.
+
+`BuildScript.cs` (101 строка) был бы нужен в любом случае — это запуск сборки через CLI, заменяет команду `File → Build` в редакторе.
+
+### Ассеты (внешние, см. раздел «Спрайты и звуки»)
+
+```
+Assets/_Project/
+├── Kenney/             ← спрайты CC0 (Player, Ground, Items, Backgrounds)
+├── Audio/              ← jump.wav, coin.wav, victory.wav
+└── Fonts/              ← Roboto-Regular.ttf (кириллица в UI)
+```
+
+### Сцена и сгенерированные ассеты
+
+```
+Assets/_Project/
+├── Scenes/Main.unity              ← пересоздаётся SceneBuilder при сборке
+├── Art/Tilemaps/                  ← Tile-ассеты, генерируются SceneBuilder
+└── Prefabs/CoinPickupVfx.prefab   ← VFX-партикл, генерируется SceneBuilder
+```
+
+### Корень проекта
+
+```
+platformer/
+├── ProjectSettings/    ← Unity-конфиги (тэги, слои, ввод, билд)
+├── Packages/           ← манифест зависимостей Unity
+├── web/                ← готовый WebGL-билд (для Vercel)
+├── build/Windows/      ← локальный .exe-билд
+└── build.sh            ← одношаговая сборка (web|win)
+```
+
+---
+
+## Спрайты и звуки
+
+### Спрайты — [Kenney Platformer Pack Redux](https://kenney.nl/assets/platformer-pack-redux) (CC0)
+
+- **Игрок** (стойка, ходьба ×2, прыжок) — `alienPink_stand.png`, `alienPink_walk1/walk2.png`, `alienPink_jump.png`
+- **Земля и платформы** — `grassMid/Left/Right/Center.png` (полные тайлы), `grassHalf_left/mid/right.png` (тонкие платформы)
+- **Монета** — `coinGold.png`
+- **Флаг финиша** — `finishFlag.png`
+- **Искра партикла** — `sparkle.png`
+- **Фон (голубое небо)** — используется как `Camera.backgroundColor`, отдельного спрайта нет
+
+Лицензионный текст — `Assets/_Project/Kenney/License.txt`.
+
+### Звуки — [8-bit platformer SFX by tcpixel](https://opengameart.org/content/8-bit-platformer-sfx) (CC-BY 3.0)
+
+- `jump.wav` — звук прыжка
+- `coin.wav` — сбор монеты
+- `victory.wav` — победа
+
+---
+
+## Технические решения
+
+- **Ввод в `Update`, физика в `FixedUpdate`** — поведение одинаковое на любых FPS.
+- **`TilemapCollider2D` без `Composite`** — `CompositeCollider2D` в batch-mode не успевает сгенерировать геометрию до сохранения сцены, игрок проваливается. Одиночный коллайдер на тайл для простого уровня хватает.
+- **WebGL: Brotli + `Decompression Fallback = ON`** — Unity сам распаковывает в JS, билд работает на любом хостинге без правки заголовков (Vercel, Netlify, itch.io). Размен — лоадер на ~150 КБ тяжелее.
+- **Шрифт `Roboto-Regular.ttf`** — встроенный `LegacyRuntime.ttf` не содержит кириллицы, без него русский текст в UI исчезает.
+
+---
+
+## Unity CLI: как создавался проект
+
+### Что такое «Unity CLI»
+
+Это **не отдельный инструмент**. «Unity CLI» — это тот же самый бинарник Unity, который обычно открывает графический редактор, **но запущенный из терминала с флагом `-batchmode`**. В этом режиме Unity не показывает окно, а просто исполняет указанный C#-метод из папки `Assets/_Project/Scripts/Editor/` и выходит. То есть это **не способ программировать Unity, а способ заставить редактор сделать что-то без человека за мышкой**.
+
+### Разработка делится на 3 этапа — Unity CLI нужен только в двух
+
+**Этап 1. Игровая логика — Unity CLI НЕ нужен.**
+`PlayerController.cs`, `Coin.cs`, `GameManager.cs` и другие файлы в `Gameplay/` и `Systems/` — это **обычный C#-код**. Агент пишет их как любые исходники, в текстовом редакторе. Unity при этом не запускается. Эти скрипты потом просто компилятся вместе с билдом.
+
+**Этап 2. Сцена, ассеты, привязки — Unity CLI НУЖЕН.**
+Файл `Main.unity` — это не текст, который агент мог бы написать вручную: это бинарно-YAML структура со ссылками между объектами (камера, тайлмап, ground-check, привязки `onClick` к методам). В нормальной разработке всё это собирают **мышкой в Unity Editor**: перетаскивают объекты в иерархии, в инспекторе протягивают ссылки на компоненты.
+
+Агент Editor не открывал. Чтобы получить `.unity`-файл всё равно, агент:
+1. Пишет `SceneBuilder.cs` — это **программное описание тех самых действий, которые делаются мышкой**.
+2. Запускает Unity из терминала: тот исполняет `SceneBuilder.Build()` и сохраняет результат в `Main.unity`.
+
+**Этап 3. Сборка билда (`.wasm`, `.exe`) — Unity CLI НУЖЕН.**
+Финальные артефакты получаются через `BuildPipeline.BuildPlayer(...)` в `BuildScript.cs`. Это **тот же механизм, что при клике `File → Build` в редакторе**, но вызванный из CLI. Никаких альтернатив тут нет — собрать билд без Unity физически нельзя.
+
+### Сводная таблица
+
+| Этап | Что делает агент | Unity CLI? |
+|---|---|---|
+| Игровая логика (`Gameplay/`, `Systems/`) | пишет `.cs`-файлы как обычные исходники | ❌ не нужен |
+| Сцена, тайлмап, монеты, UI, привязки | пишет `SceneBuilder.cs` (описание «как мышкой») | ✅ запускает `SceneBuilder.Build` |
+| Сборка WebGL / Windows | (готов `BuildScript.cs`) | ✅ запускает `BuildScript.BuildWebGL/Windows` |
+
+### Команда Unity CLI
+
+Этапы 2 и 3 запускаются **одной командой** — `BuildScript.BuildWebGL` сам вызывает `SceneBuilder.Build()` в начале:
+
+```bash
+UNITY="/Applications/Unity/Hub/Editor/6000.3.15f1/Unity.app/Contents/MacOS/Unity"
+"$UNITY" -batchmode -nographics -projectPath . \
+         -executeMethod BuildScript.BuildWebGL \
+         -quit -logFile -
+```
+
+| Флаг | Значение в `build.sh` | Обязателен | Что без него |
+|---|---|---|---|
+| `-batchmode` | флаг включён | да | Unity откроет GUI, команда зависнет |
+| `-projectPath` | `$PROJECT_DIR` (корень проекта) | да | Unity не поймёт какой проект собирать |
+| `-executeMethod` | `BuildScript.BuildWebGL` или `BuildScript.BuildWindows` (по аргументу `web`/`win`) | да | нечего вызывать |
+| `-quit` | флаг включён | да (после `-executeMethod`) | Unity отработает метод и продолжит висеть |
+| `-nographics` | флаг включён | нет | стандартный «безопасный дефолт»: без него Unity создаёт скрытый GL-контекст. На CI без GPU упадёт. |
+| `-logFile` | `-` (stdout) | нет | без флага — логи в `~/Library/Logs/Unity/Editor.log`. С тире (`-`) — в stdout, прямо в терминал. |
+
+В обычной работе это обёрнуто в `build.sh` в корне проекта (см. блок «Сборка и запуск» выше). `BuildScript.BuildWebGL/BuildWindows` сам вызывает `SceneBuilder.Build()` в начале, поэтому одной команды хватает на всё.
+
+### Когда снова запускать `./build.sh` при разработке фичи
+
+Открывать Unity Editor не нужно ни на одном шаге — любое изменение применяется одной и той же командой:
+
+| Что меняешь | Что запускать |
+|---|---|
+| Логику в runtime-скрипте (`PlayerController.cs`, `Coin.cs`) | `./build.sh` |
+| Состав сцены, новые объекты, координаты монет, тайлы (правишь `SceneBuilder.cs`) | `./build.sh` |
+| Положить новый спрайт/звук в `Assets/_Project/Kenney/` (если на него ссылается `SceneBuilder.cs`) | `./build.sh` |
+| Параметры тегов / слоёв / Input (правишь `ProjectSettings/*.asset`) | `./build.sh` |
+
+Короткое правило: **любая фича = правка C# → `./build.sh`.**
+
+---
+
+## Что можно улучшить
+
+- **Спрайт-анимация на коде** — можно перевести на `Animator` + `AnimationClip`, но 2 кадра ходьбы в `Update()` не оправдывают веса аниматора.
+- **`TilemapCollider2D` вместо `CompositeCollider2D`** — даёт отдельный коллайдер на тайл (на этом уровне ~30 тайлов, без проблем). Для большого уровня имеет смысл вернуть Composite, но решить проблему с batch-mode-генерацией геометрии.
+- **Уровень захардкожен в `SceneBuilder.cs`** — можно вынести в JSON/CSV для редактирования без перекомпиляции.
+- **Звуки CC-BY 3.0** — для коммерческого использования нужна атрибуция; для CC0-only заменить из `kenney.nl/assets/sci-fi-sounds`.
+- **Нет чек-пойнтов** — KillZone всегда рестартует с начала; для большого уровня имеет смысл сохранять «последнюю землю».
