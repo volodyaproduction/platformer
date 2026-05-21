@@ -2,8 +2,8 @@
 # Сборка игры. Использование:
 #   ./build.sh        — WebGL (по умолчанию), результат в web/
 #   ./build.sh web    — то же
-#   ./build.sh win    — Windows .exe, результат в build/Windows/Platformer.exe
-# Перед сборкой вызывается SceneBuilder.Build (см. BuildScript.cs).
+#   ./build.sh win    — Windows .exe, результат в build/Windows/
+# Перед сборкой запускается регенерация сцен и ассетов (см. BuildScript.cs).
 set -euo pipefail
 
 TARGET="${1:-web}"
@@ -29,3 +29,29 @@ fi
 "$UNITY" -batchmode -nographics -projectPath "$PROJECT_DIR" \
          -executeMethod "$METHOD" \
          -quit -logFile -
+
+# Пост-патч для WebGL: меняем фиксированный размер canvas (960×600) на
+# адаптивный — игра сохраняет пропорции и помещается в любое окно браузера.
+if [[ "$TARGET" == "web" ]]; then
+  python3 - "$PROJECT_DIR/web/index.html" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+src = p.read_text()
+old = '        canvas.style.width = "960px";\n        canvas.style.height = "600px";'
+new = '''        function fitCanvas() {
+          var aspect = 960 / 600;
+          var maxW = window.innerWidth * 0.95;
+          var maxH = (window.innerHeight - 38) * 0.95;
+          var w = Math.min(maxW, maxH * aspect);
+          canvas.style.width = w + "px";
+          canvas.style.height = (w / aspect) + "px";
+        }
+        fitCanvas();
+        window.addEventListener("resize", fitCanvas);'''
+if old not in src:
+    sys.stderr.write("WARNING: canvas-size block not found in index.html — patch skipped\n")
+    sys.exit(0)
+p.write_text(src.replace(old, new))
+print("Patched web/index.html: canvas теперь адаптивный")
+PY
+fi
