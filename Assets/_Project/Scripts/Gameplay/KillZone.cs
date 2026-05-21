@@ -1,6 +1,6 @@
 using UnityEngine;
 
-// Триггер-зона смерти под уровнем: при касании игроком перезапускает сцену.
+// Триггер-зона смерти под уровнем: при касании игроком завершает раунд.
 [RequireComponent(typeof(Collider2D))]
 public class KillZone : MonoBehaviour
 {
@@ -8,8 +8,6 @@ public class KillZone : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
         if (GameManager.Instance != null)
-        {
-            GameManager.Instance.Restart();
-        }
+            GameManager.Instance.EndRound(GameManager.EndReason.Fell);
     }
 }

@@ -43,6 +43,19 @@ public class PlayerController : MonoBehaviour
     private bool jumpRequested;
     private float walkFrameTimer;
     private int walkFrame;
+    private bool frozen;
+
+    // 5a. Заморозка управления (вызывается из GameOverPanel при конце раунда).
+    // Останавливаем горизонтальную скорость, дальше FixedUpdate ставит её в 0.
+    public void Freeze()
+    {
+        frozen = true;
+        touchMoveInput = 0f;
+        horizontalInput = 0f;
+        jumpRequested = false;
+        if (rb != null)
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+    }
 
     void Awake()
     {
@@ -56,7 +69,7 @@ public class PlayerController : MonoBehaviour
     {
         // На паузе (Time.timeScale=0) не читаем ввод — иначе после возобновления
         // игрок «вспомнит» зажатое направление и побежит сам.
-        if (Time.timeScale == 0f) return;
+        if (Time.timeScale == 0f || frozen) return;
 
         // 6. Клавиатура; тач-движение перебивает, если кнопка зажата
         float keyboard = Input.GetAxisRaw("Horizontal");

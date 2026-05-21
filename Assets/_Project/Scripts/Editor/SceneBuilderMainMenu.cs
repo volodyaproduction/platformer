@@ -67,8 +67,16 @@ public static class SceneBuilderMainMenu
         menu.startButton = CreateButton(menuRoot.transform, "StartButton", font,
             label: "Старт",
             color: new Color(0.2f, 0.6f, 0.9f),
-            anchoredPos: new Vector2(0, 0),
+            anchoredPos: new Vector2(0, 60),
             size: new Vector2(440, 110));
+
+        // 7a. Кнопка «Лидерборд» — оранжевая, ниже «Старт»
+        menu.leaderboardButton = CreateButton(menuRoot.transform,
+            "LeaderboardButton", font,
+            label: "Лидерборд",
+            color: new Color(0.9f, 0.6f, 0.2f),
+            anchoredPos: new Vector2(0, -70),
+            size: new Vector2(440, 100));
 
         EditorUtility.SetDirty(menu);
 

@@ -3,8 +3,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 // Пауза по ESC во время уровня. Замораживает игру через Time.timeScale,
-// показывает оверлей с кнопками «Продолжить» / «В меню». После победы ESC
-// игнорится — там работает WinPanel.
+// показывает оверлей с кнопками «Продолжить» / «В меню». После окончания
+// раунда ESC игнорится — там уже работает GameOverPanel.
 public class PauseController : MonoBehaviour
 {
     [Header("UI")]
@@ -35,7 +35,7 @@ public class PauseController : MonoBehaviour
     {
         if (paused) return;
         var gm = GameManager.Instance;
-        if (gm == null || gm.IsWon) return;
+        if (gm == null || !gm.IsPlaying) return;
         Toggle();
     }
 
@@ -43,7 +43,7 @@ public class PauseController : MonoBehaviour
     {
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
         var gm = GameManager.Instance;
-        if (gm == null || gm.IsWon) return;
+        if (gm == null || !gm.IsPlaying) return;
         Toggle();
     }
 
@@ -53,7 +53,7 @@ public class PauseController : MonoBehaviour
         // игра «висит». По возвращении игрок видит явный экран паузы.
         if (hasFocus || paused) return;
         var gm = GameManager.Instance;
-        if (gm == null || gm.IsWon) return;
+        if (gm == null || !gm.IsPlaying) return;
         Toggle();
     }
 

@@ -1,33 +1,37 @@
+using System;
+using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-// Менеджер игры: счётчик монет, состояние победы, обновление UI напрямую,
-// центральная точка для звуков победы и сбора монет.
+// Центральная игровая сессия раунда: счёт, 30-секундный таймер, события.
+// Раунд заканчивается по таймауту, падению в яму или достижению финиша.
+[DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    // 1. UI-ссылки (Score Text + Panel победы)
-    [Header("UI")]
-    public Text scoreText;
-    public GameObject winPanel;
+    public enum EndReason { Timeout, Fell, Finished }
 
-    // 2. Аудио: один источник на менеджере, два клипа
+    [Header("Настройки раунда")]
+    public float roundDuration = 30f;
+
     [Header("Аудио")]
     public AudioSource sfxSource;
     public AudioClip coinClip;
     public AudioClip victoryClip;
 
-    private int coinCount;
-    private int totalCoins;
-    private bool gameWon;
+    public event Action<int> ScoreChanged;
+    public event Action<float> TimeChanged;
+    public event Action<int, EndReason> GameOver;
 
-    public bool IsWon => gameWon;
+    public int Score { get; private set; }
+    public float TimeLeft { get; private set; }
+    public bool IsPlaying { get; private set; }
+    public EndReason LastEndReason { get; private set; }
 
     void Awake()
     {
-        // 3. Singleton-инициализация
+        // 1. Singleton (сцена короткоживущая, без DontDestroyOnLoad)
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -36,48 +40,61 @@ public class GameManager : MonoBehaviour
         Instance = this;
     }
 
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     void Start()
     {
-        // 4. Считаем все монеты в сцене для счётчика «N / total»
-        totalCoins = FindObjectsByType<Coin>(FindObjectsSortMode.None).Length;
-        UpdateScoreUI();
-        if (winPanel != null) winPanel.SetActive(false);
+        // 2. Инициализация счёта/таймера + первичная отправка событий
+        Score = 0;
+        TimeLeft = roundDuration;
+        IsPlaying = true;
+        ScoreChanged?.Invoke(Score);
+        TimeChanged?.Invoke(TimeLeft);
+        StartCoroutine(TimerLoop());
     }
 
     public void AddCoin()
     {
-        coinCount++;
+        if (!IsPlaying) return;
+        Score++;
         if (coinClip != null && sfxSource != null)
-        {
             sfxSource.PlayOneShot(coinClip);
-        }
-        UpdateScoreUI();
+        ScoreChanged?.Invoke(Score);
     }
 
-    public void Win()
+    public void EndRound(EndReason reason)
     {
-        // 5. Защита от повторного срабатывания при множественном касании
-        if (gameWon) return;
-        gameWon = true;
-
-        if (winPanel != null) winPanel.SetActive(true);
-        if (victoryClip != null && sfxSource != null)
+        if (!IsPlaying) return;
+        IsPlaying = false;
+        LastEndReason = reason;
+        TimeChanged?.Invoke(TimeLeft);
+        // 3. Звук победы — только при достижении финиша (старая семантика)
+        if (reason == EndReason.Finished
+            && victoryClip != null && sfxSource != null)
         {
             sfxSource.PlayOneShot(victoryClip);
         }
+        GameOver?.Invoke(Score, reason);
     }
 
     public void Restart()
     {
-        // 6. Перезагрузка текущей сцены
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    void UpdateScoreUI()
+    IEnumerator TimerLoop()
     {
-        if (scoreText != null)
+        // 4. Каждый кадр уменьшаем таймер, шлём событие
+        while (TimeLeft > 0f && IsPlaying)
         {
-            scoreText.text = $"Монеты: {coinCount} / {totalCoins}";
+            yield return null;
+            TimeLeft -= Time.deltaTime;
+            if (TimeLeft < 0f) TimeLeft = 0f;
+            TimeChanged?.Invoke(TimeLeft);
         }
+        if (IsPlaying) EndRound(EndReason.Timeout);
     }
 }

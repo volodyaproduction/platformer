@@ -9,6 +9,7 @@ public static class BuildScript
 {
     const string ScenePath = "Assets/_Project/Scenes/Main.unity";
     const string MenuScenePath = "Assets/_Project/Scenes/MainMenu.unity";
+    const string LeaderboardScenePath = "Assets/_Project/Scenes/Leaderboard.unity";
     const string WebOutDir = "web";
     const string WinOutDir = "build/Windows";
     const string WinExeName = "Platformer.exe";
@@ -21,10 +22,11 @@ public static class BuildScript
 
     public static void BuildWindows()
     {
-        // Регенерируем сцены: сначала Main (он сам в конце ставит активной),
-        // затем MainMenu — она добавится первой в BuildSettings.
+        // Регенерируем все три сцены: Main (игра) → MainMenu → Leaderboard.
+        // MainMenu добавится первой в BuildSettings, Leaderboard — последней.
         SceneBuilder.Build();
         SceneBuilderMainMenu.Build();
+        SceneBuilderLeaderboard.Build();
 
         EnsureDirectory(WinOutDir);
 
@@ -34,7 +36,7 @@ public static class BuildScript
 
         var options = new BuildPlayerOptions
         {
-            scenes = new[] { MenuScenePath, ScenePath },
+            scenes = new[] { MenuScenePath, ScenePath, LeaderboardScenePath },
             locationPathName = Path.Combine(WinOutDir, WinExeName),
             target = BuildTarget.StandaloneWindows64,
             targetGroup = BuildTargetGroup.Standalone,
@@ -47,10 +49,10 @@ public static class BuildScript
 
     public static void BuildWebGL()
     {
-        // Регенерируем сцены: сначала Main (он сам в конце ставит активной),
-        // затем MainMenu — она добавится первой в BuildSettings.
+        // Регенерируем все три сцены (см. BuildWindows для порядка).
         SceneBuilder.Build();
         SceneBuilderMainMenu.Build();
+        SceneBuilderLeaderboard.Build();
 
         EnsureDirectory(WebOutDir);
 
@@ -82,7 +84,7 @@ public static class BuildScript
 
         var options = new BuildPlayerOptions
         {
-            scenes = new[] { MenuScenePath, ScenePath },
+            scenes = new[] { MenuScenePath, ScenePath, LeaderboardScenePath },
             locationPathName = WebOutDir,
             target = BuildTarget.WebGL,
             targetGroup = BuildTargetGroup.WebGL,

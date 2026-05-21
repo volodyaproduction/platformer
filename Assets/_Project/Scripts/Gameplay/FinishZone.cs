@@ -1,6 +1,6 @@
 using UnityEngine;
 
-// Триггер финиша: при касании игроком вызывает GameManager.Win().
+// Триггер финиша: при касании игроком завершает раунд (один из трёх способов).
 [RequireComponent(typeof(Collider2D))]
 public class FinishZone : MonoBehaviour
 {
@@ -8,8 +8,6 @@ public class FinishZone : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
         if (GameManager.Instance != null)
-        {
-            GameManager.Instance.Win();
-        }
+            GameManager.Instance.EndRound(GameManager.EndReason.Finished);
     }
 }

@@ -5,7 +5,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
-using UnityEngine.Events;
 using Unity.Cinemachine;
 
 // Программно создаёт Main.unity: тайлмап-уровень, игрок, монеты, KillZone,
@@ -26,23 +25,34 @@ public static class SceneBuilder
     // 3. Координаты монеток в мире. Монета — спрайт 128x128 при PPU=128,
     // т.е. 1x1 unit, центр на transform. Чтобы нижний край касался верха
     // тайла (y=1 для тайла земли на y=0), центр должен быть на y=1.5.
+    // Уровень удвоен по длине под 30-сек раунд — ~18 монет на маршруте.
     static readonly Vector2[] CoinPositions = new Vector2[]
     {
-        new Vector2(2.5f, 1.5f),    // на стартовой земле
+        new Vector2(2.5f, 1.5f),
         new Vector2(5.5f, 4.5f),    // на платформе y=3
         new Vector2(12.5f, 1.5f),   // между ямами
-        new Vector2(16f, 5.5f),     // на платформе y=4
+        new Vector2(16f, 5.5f),     // на платформе y=4 над провалом
         new Vector2(21.5f, 6.5f),   // на самой высокой платформе y=5
-        new Vector2(24.5f, 1.5f),   // перед второй ямой
-        new Vector2(29.5f, 1.5f),   // на финишной земле
-        new Vector2(32.5f, 1.5f),   // перед флагом
+        new Vector2(24.5f, 1.5f),
+        new Vector2(29.5f, 1.5f),
+        new Vector2(32.5f, 1.5f),
+        new Vector2(31.5f, 5.5f),   // на платформе y=4
+        new Vector2(37f, 5.5f),     // на платформе y=4 над ямой
+        new Vector2(41.5f, 6.5f),   // на платформе y=5
+        new Vector2(43f, 1.5f),
+        new Vector2(49.5f, 4.5f),   // на платформе y=3
+        new Vector2(54f, 5.5f),     // на платформе y=4 над провалом
+        new Vector2(57.5f, 1.5f),
+        new Vector2(60.5f, 1.5f),
+        new Vector2(63f, 6.5f),     // на финальной высокой платформе y=5
+        new Vector2(66.5f, 1.5f),   // перед флагом
     };
 
     // 4. Стартовая точка и финиш. Игрок при стоянии на земле должен иметь
     // transform.y ≈ 1.72 (центр спрайта 184px при PPU=128 = 1.44 unit).
     // Стартуем чуть выше, чтобы было видно падение.
     static readonly Vector2 PlayerStart = new Vector2(1f, 4f);
-    static readonly Vector2 FinishPosition = new Vector2(34f, 1.75f);
+    static readonly Vector2 FinishPosition = new Vector2(68.5f, 1.75f);
 
     [MenuItem("Tools/Build Main Scene")]
     public static void Build()
@@ -78,14 +88,13 @@ public static class SceneBuilder
         CreateFinishZone();
         CreateCeiling();
 
-        // 13. UI: Canvas со счётом и панелью победы + кнопка рестарта +
-        // экранные кнопки тач-управления (← ↑ →)
+        // 13. UI: Canvas со счётчиком, таймером, GameOverPanel и диалогом
+        // имени для лидерборда + экранные кнопки тач-управления.
         var playerCtrl = player.GetComponent<PlayerController>();
-        var (scoreText, winPanel) = CreateUI(playerCtrl, out var restartButton);
+        var ui = CreateUI(playerCtrl);
 
-        // 14. GameManager собирает все ссылки
-        var gameManager = CreateGameManager(scoreText, winPanel);
-        WireRestartButton(restartButton, gameManager);
+        // 14. GameManager + HUD: один объект, HUD подписан на события.
+        CreateGameManager(ui.scoreText, ui.timerText);
 
         // Пауза по ESC: оверлей с кнопками «Продолжить» / «В меню»
         var canvasTr = GameObject.Find("Canvas").transform;
@@ -108,28 +117,36 @@ public static class SceneBuilder
 
     static Vector2Int[] BuildGroundTiles()
     {
+        // Удлинённый вдвое уровень с шестью ямами/провалами.
         var list = new List<Vector2Int>();
-        // 17. Стартовый отрезок: x = 0..7, y = 0
-        for (int x = 0; x <= 7; x++) list.Add(new Vector2Int(x, 0));
-        // 18. Средний отрезок после первой ямы: x = 11..14
-        for (int x = 11; x <= 14; x++) list.Add(new Vector2Int(x, 0));
-        // 19. Длинный пол перед второй ямой: x = 18..24
-        for (int x = 18; x <= 24; x++) list.Add(new Vector2Int(x, 0));
-        // 20. Финишный отрезок: x = 28..35
-        for (int x = 28; x <= 35; x++) list.Add(new Vector2Int(x, 0));
+        AddRow(list, 0, 7, 0);     // старт
+        AddRow(list, 11, 14, 0);   // после ямы 8..10
+        AddRow(list, 18, 24, 0);   // после провала 15..17 (накрыт платформой)
+        AddRow(list, 28, 34, 0);   // после ямы 25..27
+        AddRow(list, 39, 44, 0);   // после ямы 35..38
+        AddRow(list, 47, 52, 0);   // после провала 45..46
+        AddRow(list, 56, 70, 0);   // финишный длинный отрезок
         return list.ToArray();
     }
 
     static Vector2Int[] BuildPlatformTiles()
     {
         var list = new List<Vector2Int>();
-        // 21. Платформа на средней высоте между стартом и первой ямой
-        for (int x = 4; x <= 6; x++) list.Add(new Vector2Int(x, 3));
-        // 22. Платформа после первой ямы — повыше
-        for (int x = 15; x <= 17; x++) list.Add(new Vector2Int(x, 4));
-        // 23. Самая высокая платформа — требует двойного прыжка
-        for (int x = 21; x <= 22; x++) list.Add(new Vector2Int(x, 5));
+        AddRow(list, 4, 6, 3);     // между стартом и первой ямой
+        AddRow(list, 15, 17, 4);   // над провалом 15..17
+        AddRow(list, 21, 22, 5);   // высокая — двойной прыжок
+        AddRow(list, 30, 32, 4);
+        AddRow(list, 36, 38, 4);   // над ямой 35..38
+        AddRow(list, 41, 42, 5);   // высокая
+        AddRow(list, 49, 50, 3);
+        AddRow(list, 53, 55, 4);   // над провалом 53..55 (нет, 45..46 — fallback)
+        AddRow(list, 62, 64, 5);   // финальная высокая
         return list.ToArray();
+    }
+
+    static void AddRow(List<Vector2Int> list, int xStart, int xEnd, int y)
+    {
+        for (int x = xStart; x <= xEnd; x++) list.Add(new Vector2Int(x, y));
     }
 
     // ===== Камера и Cinemachine =====
@@ -370,9 +387,9 @@ public static class SceneBuilder
         // Ставим невидимый коллайдер ровно по верхней границе кадра,
         // чтобы игрок при двойном прыжке упирался и не вылетал «в небо».
         var go = new GameObject("Ceiling");
-        go.transform.position = new Vector3(17.5f, 9.5f, 0);
+        go.transform.position = new Vector3(35f, 9.5f, 0);
         var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(60f, 1f);
+        col.size = new Vector2(140f, 1f);
     }
 
     // ===== KillZone и Финиш =====
@@ -380,10 +397,10 @@ public static class SceneBuilder
     static void CreateKillZone()
     {
         var go = new GameObject("KillZone");
-        go.transform.position = new Vector3(17.5f, -4f, 0);
+        go.transform.position = new Vector3(35f, -4f, 0);
 
         var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(60f, 2f);
+        col.size = new Vector2(140f, 2f);
         col.isTrigger = true;
 
         go.AddComponent<KillZone>();
@@ -461,8 +478,15 @@ public static class SceneBuilder
 
     // ===== UI =====
 
-    static (Text scoreText, GameObject winPanel) CreateUI(
-        PlayerController player, out Button restartButton)
+    // Вспомогательная структура для возврата ссылок из CreateUI
+    public struct UiRefs
+    {
+        public Text scoreText;
+        public Text timerText;
+        public GameOverPanel gameOverPanel;
+    }
+
+    static UiRefs CreateUI(PlayerController player)
     {
         // 41. EventSystem нужен для кликов
         var es = new GameObject("EventSystem");
@@ -479,94 +503,174 @@ public static class SceneBuilder
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
         canvasGO.AddComponent<GraphicRaycaster>();
+        var canvasTr = canvasGO.transform;
 
-        // 43. Score Text (legacy UI Text, Arial по умолчанию)
-        var scoreGO = new GameObject("ScoreText");
-        scoreGO.transform.SetParent(canvasGO.transform, false);
-        var scoreText = scoreGO.AddComponent<Text>();
-        scoreText.text = "Монеты: 0 / 0";
-        scoreText.font = LoadFont();
-        scoreText.fontSize = 48;
-        scoreText.color = Color.white;
-        scoreText.alignment = TextAnchor.UpperLeft;
+        // 43. HUD: ScoreText (верх-лево) и TimerText (верх-центр).
+        var scoreText = MakeHudText(canvasTr, "ScoreText", "Монеты: 0",
+            anchor: new Vector2(0, 1), pivot: new Vector2(0, 1),
+            anchoredPos: new Vector2(40, -30));
+        var timerText = MakeHudText(canvasTr, "TimerText", "Время: 30.0",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0, -30));
 
-        var outline = scoreGO.AddComponent<Outline>();
-        outline.effectColor = Color.black;
-        outline.effectDistance = new Vector2(2, -2);
+        // 44. NameInputDialog: затемнение + поле + кнопка OK. Скрыт по умолчанию.
+        var nameDialog = CreateNameDialog(canvasTr);
 
-        var scoreRT = scoreGO.GetComponent<RectTransform>();
-        scoreRT.anchorMin = new Vector2(0, 1);
-        scoreRT.anchorMax = new Vector2(0, 1);
-        scoreRT.pivot = new Vector2(0, 1);
-        scoreRT.anchoredPosition = new Vector2(40, -30);
-        scoreRT.sizeDelta = new Vector2(600, 80);
+        // 45. GameOverPanel: затемнение + заголовок + счёт + 3 кнопки.
+        var gameOverPanel = CreateGameOverPanel(canvasTr, nameDialog, player);
 
-        // 44. Win-panel — затемнение + текст + кнопка
-        var winPanel = new GameObject("WinPanel");
-        winPanel.transform.SetParent(canvasGO.transform, false);
-        var panelImg = winPanel.AddComponent<Image>();
-        panelImg.color = new Color(0, 0, 0, 0.75f);
-        var winRT = winPanel.GetComponent<RectTransform>();
-        winRT.anchorMin = Vector2.zero;
-        winRT.anchorMax = Vector2.one;
-        winRT.offsetMin = Vector2.zero;
-        winRT.offsetMax = Vector2.zero;
-
-        // 45. Текст «Вы победили!»
-        var winTextGO = new GameObject("WinText");
-        winTextGO.transform.SetParent(winPanel.transform, false);
-        var winText = winTextGO.AddComponent<Text>();
-        winText.text = "Вы победили!";
-        winText.font = LoadFont();
-        winText.fontSize = 96;
-        winText.color = Color.white;
-        winText.alignment = TextAnchor.MiddleCenter;
-        var winTextRT = winText.GetComponent<RectTransform>();
-        winTextRT.anchorMin = new Vector2(0.5f, 0.5f);
-        winTextRT.anchorMax = new Vector2(0.5f, 0.5f);
-        winTextRT.pivot = new Vector2(0.5f, 0.5f);
-        winTextRT.anchoredPosition = new Vector2(0, 80);
-        winTextRT.sizeDelta = new Vector2(800, 160);
-
-        // 46. Кнопка Restart
-        var btnGO = new GameObject("RestartButton");
-        btnGO.transform.SetParent(winPanel.transform, false);
-        var btnImg = btnGO.AddComponent<Image>();
-        btnImg.color = new Color(0.2f, 0.6f, 0.9f);
-        restartButton = btnGO.AddComponent<Button>();
-        var btnRT = btnGO.GetComponent<RectTransform>();
-        btnRT.anchorMin = new Vector2(0.5f, 0.5f);
-        btnRT.anchorMax = new Vector2(0.5f, 0.5f);
-        btnRT.pivot = new Vector2(0.5f, 0.5f);
-        btnRT.anchoredPosition = new Vector2(0, -80);
-        btnRT.sizeDelta = new Vector2(320, 100);
-
-        var btnTextGO = new GameObject("Text");
-        btnTextGO.transform.SetParent(btnGO.transform, false);
-        var btnText = btnTextGO.AddComponent<Text>();
-        btnText.text = "Заново";
-        btnText.font = LoadFont();
-        btnText.fontSize = 44;
-        btnText.color = Color.white;
-        btnText.alignment = TextAnchor.MiddleCenter;
-        var btnTextRT = btnText.GetComponent<RectTransform>();
-        btnTextRT.anchorMin = Vector2.zero;
-        btnTextRT.anchorMax = Vector2.one;
-        btnTextRT.offsetMin = Vector2.zero;
-        btnTextRT.offsetMax = Vector2.zero;
-
-        // 47. Экранные кнопки тач-управления (200×200 в reference 1920×1080):
+        // 46. Экранные кнопки тач-управления (200×200 в reference 1920×1080):
         // слева пара < >, справа ^. Полупрозрачные, чтобы не закрывать игру.
         // ASCII вместо ←→↑: в Roboto-Regular.ttf (subset под кириллицу) нет
         // глифов стрелочного блока Unicode, поэтому они рисовались пустыми.
-        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Left,
+        CreateTouchButton(canvasTr, player, TouchButton.Action.Left,
             "TouchLeft",  "<", new Vector2(0, 0), new Vector2(160, 160));
-        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Right,
+        CreateTouchButton(canvasTr, player, TouchButton.Action.Right,
             "TouchRight", ">", new Vector2(0, 0), new Vector2(380, 160));
-        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Jump,
+        CreateTouchButton(canvasTr, player, TouchButton.Action.Jump,
             "TouchJump",  "^", new Vector2(1, 0), new Vector2(-160, 160));
 
-        return (scoreText, winPanel);
+        return new UiRefs
+        {
+            scoreText = scoreText,
+            timerText = timerText,
+            gameOverPanel = gameOverPanel,
+        };
+    }
+
+    static Text MakeHudText(Transform parent, string name, string content,
+        Vector2 anchor, Vector2 pivot, Vector2 anchoredPos)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var t = go.AddComponent<Text>();
+        t.text = content;
+        t.font = LoadFont();
+        t.fontSize = 48;
+        t.color = Color.white;
+        t.alignment = TextAnchor.UpperCenter;
+
+        var outline = go.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2, -2);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.pivot = pivot;
+        rt.anchoredPosition = anchoredPos;
+        rt.sizeDelta = new Vector2(600, 80);
+        return t;
+    }
+
+    static GameOverPanel CreateGameOverPanel(Transform canvas,
+        NameInputDialog nameDialog, PlayerController player)
+    {
+        // Корень — затемнение поверх всего, скрыт по умолчанию
+        var root = CreateDimmedRoot(canvas, "GameOverPanel");
+        var title = CreatePauseText(root.transform, "Title", "Время вышло",
+            fontSize: 96, anchoredPos: new Vector2(0, 200),
+            size: new Vector2(900, 160));
+        var scoreText = CreatePauseText(root.transform, "FinalScore",
+            "Монеты: 0", fontSize: 64, anchoredPos: new Vector2(0, 70),
+            size: new Vector2(800, 100));
+
+        var restart = CreatePauseButton(root.transform, "RestartButton",
+            "Заново", new Color(0.2f, 0.6f, 0.9f),
+            anchoredPos: new Vector2(0, -50), size: new Vector2(420, 100));
+        var leaderboard = CreatePauseButton(root.transform, "LeaderboardButton",
+            "Лидерборд", new Color(0.9f, 0.6f, 0.2f),
+            anchoredPos: new Vector2(0, -170), size: new Vector2(420, 90));
+        var menu = CreatePauseButton(root.transform, "MenuButton",
+            "В меню", new Color(0.4f, 0.4f, 0.4f),
+            anchoredPos: new Vector2(0, -280), size: new Vector2(420, 80));
+
+        root.SetActive(false);
+
+        // Контроллер на отдельном объекте — он управляет UI и подпиской
+        var ctrlGO = new GameObject("GameOverController");
+        ctrlGO.transform.SetParent(canvas, false);
+        var panel = ctrlGO.AddComponent<GameOverPanel>();
+        panel.root = root;
+        panel.titleText = title;
+        panel.finalScoreText = scoreText;
+        panel.restartButton = restart;
+        panel.menuButton = menu;
+        panel.leaderboardButton = leaderboard;
+        panel.nameDialog = nameDialog;
+        panel.player = player;
+        EditorUtility.SetDirty(panel);
+        return panel;
+    }
+
+    static NameInputDialog CreateNameDialog(Transform canvas)
+    {
+        var root = CreateDimmedRoot(canvas, "NameInputPanel");
+        CreatePauseText(root.transform, "Title", "Новый рекорд!",
+            fontSize: 80, anchoredPos: new Vector2(0, 180),
+            size: new Vector2(900, 120));
+        CreatePauseText(root.transform, "Subtitle", "Введите имя",
+            fontSize: 44, anchoredPos: new Vector2(0, 80),
+            size: new Vector2(700, 80));
+
+        // InputField (legacy UGUI)
+        var fieldGO = new GameObject("NameField");
+        fieldGO.transform.SetParent(root.transform, false);
+        var bg = fieldGO.AddComponent<Image>();
+        bg.color = new Color(1f, 1f, 1f, 0.95f);
+        var frt = fieldGO.GetComponent<RectTransform>();
+        frt.anchorMin = new Vector2(0.5f, 0.5f);
+        frt.anchorMax = new Vector2(0.5f, 0.5f);
+        frt.pivot = new Vector2(0.5f, 0.5f);
+        frt.anchoredPosition = new Vector2(0, -30);
+        frt.sizeDelta = new Vector2(520, 80);
+
+        var textGO = new GameObject("Text");
+        textGO.transform.SetParent(fieldGO.transform, false);
+        var fieldText = textGO.AddComponent<Text>();
+        fieldText.font = LoadFont();
+        fieldText.fontSize = 40;
+        fieldText.color = Color.black;
+        fieldText.alignment = TextAnchor.MiddleLeft;
+        fieldText.supportRichText = false;
+        var trt = textGO.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = new Vector2(20, 5);
+        trt.offsetMax = new Vector2(-20, -5);
+
+        var field = fieldGO.AddComponent<InputField>();
+        field.textComponent = fieldText;
+        field.characterLimit = 12;
+
+        var submit = CreatePauseButton(root.transform, "SubmitButton",
+            "OK", new Color(0.2f, 0.6f, 0.9f),
+            anchoredPos: new Vector2(0, -140), size: new Vector2(280, 90));
+
+        root.SetActive(false);
+
+        var ctrlGO = new GameObject("NameInputController");
+        ctrlGO.transform.SetParent(canvas, false);
+        var dialog = ctrlGO.AddComponent<NameInputDialog>();
+        dialog.root = root;
+        dialog.nameField = field;
+        dialog.submitButton = submit;
+        EditorUtility.SetDirty(dialog);
+        return dialog;
+    }
+
+    static GameObject CreateDimmedRoot(Transform parent, string name)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0, 0, 0, 0.75f);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        return go;
     }
 
     static void CreateTouchButton(Transform canvas, PlayerController player,
@@ -734,31 +838,12 @@ public static class SceneBuilder
         return btn;
     }
 
-    static void WireRestartButton(Button btn, GameManager gm)
-    {
-        // 47. Привязываем onClick.Restart через SerializedObject — UnityEventTools
-        // в Unity 6 стал internal, поэтому редактируем persistentCalls напрямую.
-        var so = new SerializedObject(btn);
-        var calls = so.FindProperty("m_OnClick.m_PersistentCalls.m_Calls");
-        calls.arraySize = 1;
-        var call = calls.GetArrayElementAtIndex(0);
-        call.FindPropertyRelative("m_Target").objectReferenceValue = gm;
-        call.FindPropertyRelative("m_TargetAssemblyTypeName").stringValue =
-            typeof(GameManager).AssemblyQualifiedName;
-        call.FindPropertyRelative("m_MethodName").stringValue = "Restart";
-        call.FindPropertyRelative("m_Mode").intValue = 1; // Void
-        call.FindPropertyRelative("m_CallState").intValue = 2; // RuntimeOnly
-        so.ApplyModifiedProperties();
-    }
+    // ===== GameManager + HUD =====
 
-    // ===== GameManager =====
-
-    static GameManager CreateGameManager(Text scoreText, GameObject winPanel)
+    static GameManager CreateGameManager(Text scoreText, Text timerText)
     {
         var go = new GameObject("GameManager");
         var gm = go.AddComponent<GameManager>();
-        gm.scoreText = scoreText;
-        gm.winPanel = winPanel;
 
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
@@ -766,7 +851,13 @@ public static class SceneBuilder
         gm.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
         gm.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");
 
+        // HUD на том же объекте — подписывается на события GameManager
+        var hud = go.AddComponent<HUD>();
+        hud.scoreText = scoreText;
+        hud.timerText = timerText;
+
         EditorUtility.SetDirty(gm);
+        EditorUtility.SetDirty(hud);
         return gm;
     }
 
