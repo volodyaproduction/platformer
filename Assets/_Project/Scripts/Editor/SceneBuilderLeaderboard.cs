@@ -53,31 +53,24 @@ public static class SceneBuilderLeaderboard
             new Vector2(0, -50), new Vector2(900, 160),
             TextAnchor.MiddleCenter);
 
-        // 4. Шапка таблицы (#, Имя, Очки) — позиции рассчитаны под ширину
-        //    ScrollRect 1200 (то же значение что и в шутере).
-        MkText(ct, "HeaderRank",  font, 36, "#",     Center(), Center(),
-            new Vector2(-440, 320), new Vector2(120, 50), TextAnchor.MiddleCenter);
-        MkText(ct, "HeaderName",  font, 36, "Имя",   Center(), Center(),
-            new Vector2(-130, 320), new Vector2(500, 50), TextAnchor.MiddleLeft);
-        MkText(ct, "HeaderScore", font, 36, "Очки",  Center(), Center(),
-            new Vector2(330, 320),  new Vector2(220, 50), TextAnchor.MiddleRight);
-
-        // 5. ScrollRect: Viewport (с RectMask2D) → Content (VLG + Fitter).
-        //    LeaderboardView рендерит строки в content в OnEnable.
-        //    Ширина 1200 согласована с шутером — строка не растягивается
-        //    через весь экран.
+        // 4. ScrollRect-рамка. Внешний контейнер с полупрозрачным тёмным
+        //    фоном — даёт ту же визуальную «коробку» что и в шутере на
+        //    голубом фоне платформера.
         var scrollGO = new GameObject("Scroll", typeof(RectTransform));
         scrollGO.transform.SetParent(ct, false);
         var scrollRT = scrollGO.GetComponent<RectTransform>();
         scrollRT.anchorMin = Center();
         scrollRT.anchorMax = Center();
         scrollRT.pivot = Center();
-        scrollRT.anchoredPosition = new Vector2(0, -20);
-        scrollRT.sizeDelta = new Vector2(1200, 600);
+        scrollRT.anchoredPosition = new Vector2(0, 30);
+        scrollRT.sizeDelta = new Vector2(1200, 700);
+        scrollGO.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.35f);
+
         var scroll = scrollGO.AddComponent<ScrollRect>();
         scroll.horizontal = false;
         scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Elastic;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
 
         var viewportGO = new GameObject("Viewport", typeof(RectTransform));
         viewportGO.transform.SetParent(scrollGO.transform, false);
@@ -102,12 +95,16 @@ public static class SceneBuilderLeaderboard
         contentRT.offsetMax = new Vector2(0, 0);
         var vlg = contentGO.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 6;
+        vlg.padding = new RectOffset(8, 8, 8, 8);
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
         vlg.childControlWidth = true;
         vlg.childControlHeight = true;
+        vlg.childAlignment = TextAnchor.UpperCenter;
+
         var fitter = contentGO.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         scroll.content = contentRT;
 
         // 6. Статус-текст («Загрузка...», «нет связи», «пусто»). Лежит
