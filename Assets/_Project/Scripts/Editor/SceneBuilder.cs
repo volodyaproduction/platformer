@@ -637,6 +637,9 @@ public static class SceneBuilder
             "В меню", new Color(0.4f, 0.4f, 0.4f),
             anchoredPos: new Vector2(0, -160), size: new Vector2(420, 90));
 
+        // Бургер-кнопка в правом верхнем углу — открыть паузу мышью/тапом
+        var openBtn = CreateBurgerButton(canvas);
+
         // Контроллер вешаем на отдельный GO в Canvas — он управляет panel/кнопками
         var ctrlGO = new GameObject("PauseController");
         ctrlGO.transform.SetParent(canvas, false);
@@ -644,7 +647,40 @@ public static class SceneBuilder
         ctrl.panel = panelGO;
         ctrl.resumeButton = resume;
         ctrl.menuButton = menu;
+        ctrl.openButton = openBtn;
         EditorUtility.SetDirty(ctrl);
+    }
+
+    static Button CreateBurgerButton(Transform canvas)
+    {
+        // Квадратная кнопка с тремя полосками — белые Image-прямоугольники,
+        // без шрифта (юникод-глифа ☰ нет в Roboto-subset, рисуем сами).
+        var go = new GameObject("PauseOpenButton");
+        go.transform.SetParent(canvas, false);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(1f, 1f, 1f, 0.2f);
+        var btn = go.AddComponent<Button>();
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1, 1);
+        rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(1, 1);
+        rt.anchoredPosition = new Vector2(-30, -30);
+        rt.sizeDelta = new Vector2(90, 90);
+
+        for (int i = 0; i < 3; i++)
+        {
+            var line = new GameObject($"Line{i + 1}");
+            line.transform.SetParent(go.transform, false);
+            var lineImg = line.AddComponent<Image>();
+            lineImg.color = Color.white;
+            var lrt = line.GetComponent<RectTransform>();
+            lrt.anchorMin = new Vector2(0.5f, 0.5f);
+            lrt.anchorMax = new Vector2(0.5f, 0.5f);
+            lrt.pivot = new Vector2(0.5f, 0.5f);
+            lrt.anchoredPosition = new Vector2(0, 16 - i * 16);
+            lrt.sizeDelta = new Vector2(50, 6);
+        }
+        return btn;
     }
 
     static Text CreatePauseText(Transform parent, string name, string content,

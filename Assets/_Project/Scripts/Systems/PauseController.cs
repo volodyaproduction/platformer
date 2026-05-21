@@ -11,6 +11,7 @@ public class PauseController : MonoBehaviour
     public GameObject panel;
     public Button resumeButton;
     public Button menuButton;
+    public Button openButton;  // бургер в углу — открыть паузу мышью/тапом
 
     bool paused;
 
@@ -19,13 +20,23 @@ public class PauseController : MonoBehaviour
         if (panel != null) panel.SetActive(false);
         if (resumeButton != null) resumeButton.onClick.AddListener(Resume);
         if (menuButton != null) menuButton.onClick.AddListener(ToMenu);
+        if (openButton != null) openButton.onClick.AddListener(RequestPause);
     }
 
     void OnDisable()
     {
         if (resumeButton != null) resumeButton.onClick.RemoveListener(Resume);
         if (menuButton != null) menuButton.onClick.RemoveListener(ToMenu);
+        if (openButton != null) openButton.onClick.RemoveListener(RequestPause);
         if (paused) Time.timeScale = 1f;
+    }
+
+    public void RequestPause()
+    {
+        if (paused) return;
+        var gm = GameManager.Instance;
+        if (gm == null || gm.IsWon) return;
+        Toggle();
     }
 
     void Update()
