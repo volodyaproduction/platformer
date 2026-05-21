@@ -65,12 +65,23 @@ public class GameManager : MonoBehaviour
         ScoreChanged?.Invoke(Score);
     }
 
+    public void AddPenalty(int amount)
+    {
+        // Штраф за касание ловушки. Клампим к нулю — отрицательный счёт
+        // выглядит как баг и портит лидерборд.
+        if (!IsPlaying) return;
+        Score = Mathf.Max(0, Score - amount);
+        ScoreChanged?.Invoke(Score);
+    }
+
     public void EndRound(EndReason reason)
     {
         if (!IsPlaying) return;
         IsPlaying = false;
         LastEndReason = reason;
-        TimeChanged?.Invoke(TimeLeft);
+        // Согласованность с shooter: «раунд окончен → время 0», вне зависимости
+        // от причины. UI не показывает «осталось 8.2 сек» после падения.
+        TimeChanged?.Invoke(0f);
         // 3. Звук победы — только при достижении финиша (старая семантика)
         if (reason == EndReason.Finished
             && victoryClip != null && sfxSource != null)

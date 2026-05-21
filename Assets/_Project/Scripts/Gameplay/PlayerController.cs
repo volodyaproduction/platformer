@@ -44,6 +44,16 @@ public class PlayerController : MonoBehaviour
     private float walkFrameTimer;
     private int walkFrame;
     private bool frozen;
+    private float invulnerableUntil;
+
+    // Неуязвимость и блокировка управления h-скоростью на короткое время.
+    // Используется Trap, чтобы knockback не «съедался» переписыванием
+    // velocity.x в FixedUpdate.
+    public bool IsInvulnerable => Time.time < invulnerableUntil;
+    public void StartInvulnerability(float duration)
+    {
+        invulnerableUntil = Time.time + duration;
+    }
 
     // 5a. Заморозка управления (вызывается из GameOverPanel при конце раунда).
     // Останавливаем горизонтальную скорость, дальше FixedUpdate ставит её в 0.
@@ -101,9 +111,13 @@ public class PlayerController : MonoBehaviour
             jumpsLeft = maxJumps;
         }
 
-        // 10. Горизонтальная скорость
-        rb.linearVelocity = new Vector2(
-            horizontalInput * moveSpeed, rb.linearVelocity.y);
+        // 10. Горизонтальная скорость. Во время неуязвимости (knockback от
+        //     ловушки) не трогаем velocity.x — иначе ввод сразу гасит отброс.
+        if (!IsInvulnerable)
+        {
+            rb.linearVelocity = new Vector2(
+                horizontalInput * moveSpeed, rb.linearVelocity.y);
+        }
 
         // 11. Прыжок (декремент счётчика)
         if (jumpRequested)
@@ -118,14 +132,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // 12. Публичный API для экранных кнопок (TouchButton.cs)
+    // 12. Публичный API для экранных кнопок (TouchButton.cs).
+    // После Freeze() ввод игнорим, иначе после конца раунда игрок может
+    // «прыгать в воздухе» по нажатию тач-кнопок (Update заморожен, FixedUpdate — нет).
     public void SetTouchMove(float value)
     {
+        if (frozen) return;
         touchMoveInput = Mathf.Clamp(value, -1f, 1f);
     }
 
     public void RequestJump()
     {
+        if (frozen) return;
         if (jumpsLeft > 0) jumpRequested = true;
     }
 

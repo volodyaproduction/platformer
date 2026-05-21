@@ -25,12 +25,12 @@ public static class SceneBuilder
     // 3. Координаты монеток в мире. Монета — спрайт 128x128 при PPU=128,
     // т.е. 1x1 unit, центр на transform. Чтобы нижний край касался верха
     // тайла (y=1 для тайла земли на y=0), центр должен быть на y=1.5.
-    // Уровень удвоен по длине под 30-сек раунд — ~18 монет на маршруте.
+    // Уровень растянут до x≈100 — на 30-сек раунд ~22 монет.
     static readonly Vector2[] CoinPositions = new Vector2[]
     {
         new Vector2(2.5f, 1.5f),
         new Vector2(5.5f, 4.5f),    // на платформе y=3
-        new Vector2(12.5f, 1.5f),   // между ямами
+        new Vector2(12.5f, 1.5f),
         new Vector2(16f, 5.5f),     // на платформе y=4 над провалом
         new Vector2(21.5f, 6.5f),   // на самой высокой платформе y=5
         new Vector2(24.5f, 1.5f),
@@ -45,14 +45,32 @@ public static class SceneBuilder
         new Vector2(57.5f, 1.5f),
         new Vector2(60.5f, 1.5f),
         new Vector2(63f, 6.5f),     // на финальной высокой платформе y=5
-        new Vector2(66.5f, 1.5f),   // перед флагом
+        // Удлинение (x ≈ 70..100)
+        new Vector2(73f, 1.5f),
+        new Vector2(78f, 5.5f),     // на платформе y=4 над ямой 76..78
+        new Vector2(82.5f, 6.5f),   // на платформе y=5
+        new Vector2(87.5f, 5.5f),   // на платформе y=4 над ямой
+        new Vector2(94f, 6.5f),     // на финальной высокой платформе y=5
+    };
+
+    // 3a. Координаты «огоньков-ловушек» (sparkle.png с красным тинтом).
+    // Касание = –2 монеты + knockback. Расставлены в местах прохода,
+    // часто рядом с монетой — даёт risk/reward выбор.
+    static readonly Vector2[] TrapPositions = new Vector2[]
+    {
+        new Vector2(14.5f, 5.5f),   // перед монетой на платформе 15..17
+        new Vector2(22.5f, 6.5f),   // справа от монеты на самой высокой y=5
+        new Vector2(36f, 5.5f),     // на платформе 36..38 рядом с монетой
+        new Vector2(54.5f, 5.5f),   // на платформе 53..55 над провалом
+        new Vector2(82f, 6.5f),     // рядом с монетой на высокой y=5
+        new Vector2(93f, 6.5f),     // рядом с монетой перед финишем
     };
 
     // 4. Стартовая точка и финиш. Игрок при стоянии на земле должен иметь
     // transform.y ≈ 1.72 (центр спрайта 184px при PPU=128 = 1.44 unit).
     // Стартуем чуть выше, чтобы было видно падение.
     static readonly Vector2 PlayerStart = new Vector2(1f, 4f);
-    static readonly Vector2 FinishPosition = new Vector2(68.5f, 1.75f);
+    static readonly Vector2 FinishPosition = new Vector2(98.5f, 1.75f);
 
     [MenuItem("Tools/Build Main Scene")]
     public static void Build()
@@ -82,6 +100,9 @@ public static class SceneBuilder
 
         // 11. Монеты, привязанные к VFX
         SpawnCoins(vfxPrefab);
+
+        // 11a. Ловушки-«огоньки» (sparkle.png с красным тинтом)
+        SpawnTraps();
 
         // 12. KillZone под уровнем + FinishZone справа + Ceiling сверху
         CreateKillZone();
@@ -117,7 +138,7 @@ public static class SceneBuilder
 
     static Vector2Int[] BuildGroundTiles()
     {
-        // Удлинённый вдвое уровень с шестью ямами/провалами.
+        // Уровень длиной x≈100 с восемью ямами/провалами.
         var list = new List<Vector2Int>();
         AddRow(list, 0, 7, 0);     // старт
         AddRow(list, 11, 14, 0);   // после ямы 8..10
@@ -125,7 +146,10 @@ public static class SceneBuilder
         AddRow(list, 28, 34, 0);   // после ямы 25..27
         AddRow(list, 39, 44, 0);   // после ямы 35..38
         AddRow(list, 47, 52, 0);   // после провала 45..46
-        AddRow(list, 56, 70, 0);   // финишный длинный отрезок
+        AddRow(list, 56, 68, 0);   // длинный отрезок
+        AddRow(list, 71, 75, 0);   // после ямы 69..70
+        AddRow(list, 80, 85, 0);   // после провала 76..79 (накрыт платформой)
+        AddRow(list, 89, 100, 0);  // финишный отрезок (после ямы 86..88)
         return list.ToArray();
     }
 
@@ -139,8 +163,12 @@ public static class SceneBuilder
         AddRow(list, 36, 38, 4);   // над ямой 35..38
         AddRow(list, 41, 42, 5);   // высокая
         AddRow(list, 49, 50, 3);
-        AddRow(list, 53, 55, 4);   // над провалом 53..55 (нет, 45..46 — fallback)
-        AddRow(list, 62, 64, 5);   // финальная высокая
+        AddRow(list, 53, 55, 4);   // над провалом 53..55
+        AddRow(list, 62, 64, 5);   // высокая
+        AddRow(list, 76, 79, 4);   // над ямой 76..79
+        AddRow(list, 82, 83, 5);   // высокая
+        AddRow(list, 86, 88, 4);   // над ямой 86..88
+        AddRow(list, 93, 94, 5);   // финальная высокая
         return list.ToArray();
     }
 
@@ -379,6 +407,30 @@ public static class SceneBuilder
         }
     }
 
+    static void SpawnTraps()
+    {
+        // sparkle.png 32x32 при PPU=128 = 0.25 unit. Scale 4 → 1 unit, как монета.
+        // Красный тинт превращает «искру» в «огонёк опасности» без новых ассетов.
+        var sprite = LoadSprite("Assets/_Project/Kenney/Items/sparkle.png");
+        foreach (var pos in TrapPositions)
+        {
+            var go = new GameObject($"Trap_{pos.x:F0}_{pos.y:F0}");
+            go.transform.position = pos;
+            go.transform.localScale = Vector3.one * 4f;
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = new Color(1f, 0.3f, 0.1f);  // оранжево-красный
+            sr.sortingOrder = 6;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.32f;  // чуть меньше визуального размера — щадим игрока
+
+            go.AddComponent<Trap>();
+        }
+    }
+
     // ===== Невидимый потолок (не даёт выпрыгнуть за камеру) =====
 
     static void CreateCeiling()
@@ -387,9 +439,9 @@ public static class SceneBuilder
         // Ставим невидимый коллайдер ровно по верхней границе кадра,
         // чтобы игрок при двойном прыжке упирался и не вылетал «в небо».
         var go = new GameObject("Ceiling");
-        go.transform.position = new Vector3(35f, 9.5f, 0);
+        go.transform.position = new Vector3(50f, 9.5f, 0);
         var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(140f, 1f);
+        col.size = new Vector2(200f, 1f);
     }
 
     // ===== KillZone и Финиш =====
@@ -397,10 +449,10 @@ public static class SceneBuilder
     static void CreateKillZone()
     {
         var go = new GameObject("KillZone");
-        go.transform.position = new Vector3(35f, -4f, 0);
+        go.transform.position = new Vector3(50f, -4f, 0);
 
         var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(140f, 2f);
+        col.size = new Vector2(200f, 2f);
         col.isTrigger = true;
 
         go.AddComponent<KillZone>();
@@ -575,14 +627,15 @@ public static class SceneBuilder
             "Монеты: 0", fontSize: 64, anchoredPos: new Vector2(0, 70),
             size: new Vector2(800, 100));
 
+        // Порядок кнопок как в shooter: Restart → Menu → Leaderboard
         var restart = CreatePauseButton(root.transform, "RestartButton",
             "Заново", new Color(0.2f, 0.6f, 0.9f),
             anchoredPos: new Vector2(0, -50), size: new Vector2(420, 100));
-        var leaderboard = CreatePauseButton(root.transform, "LeaderboardButton",
-            "Лидерборд", new Color(0.9f, 0.6f, 0.2f),
-            anchoredPos: new Vector2(0, -170), size: new Vector2(420, 90));
         var menu = CreatePauseButton(root.transform, "MenuButton",
             "В меню", new Color(0.4f, 0.4f, 0.4f),
+            anchoredPos: new Vector2(0, -170), size: new Vector2(420, 90));
+        var leaderboard = CreatePauseButton(root.transform, "LeaderboardButton",
+            "Лидерборд", new Color(0.9f, 0.6f, 0.2f),
             anchoredPos: new Vector2(0, -280), size: new Vector2(420, 80));
 
         root.SetActive(false);
