@@ -11,16 +11,13 @@ public static class AssetForge
 
     public static void BuildAll()
     {
-        // Создаём только если файла нет — дешевле и не зависает Unity при
-        // пересохранении тех же байт каждую сборку.
+        // Перерисовываем спрайт на каждой сборке — правки алгоритма
+        // BuildSpikeSprite должны подхватываться без ручного удаления PNG.
+        EnsureDir(GeneratedDir);
         var spikePath = $"{GeneratedDir}/spike.png";
-        if (!File.Exists(spikePath))
-        {
-            EnsureDir(GeneratedDir);
-            BuildSpikeSprite(spikePath);
-            AssetDatabase.ImportAsset(spikePath);
-            Debug.Log("[AssetForge] Создан спрайт: " + spikePath);
-        }
+        BuildSpikeSprite(spikePath);
+        AssetDatabase.ImportAsset(spikePath);
+        Debug.Log("[AssetForge] Спрайт пересоздан: " + spikePath);
     }
 
     // ===== Шипы: два металлических треугольных шипа на прозрачном фоне =====

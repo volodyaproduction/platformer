@@ -484,9 +484,9 @@ public static class SceneBuilder
 
     static GameObject CreateCoinPickupVfxPrefab()
     {
+        // Префаб пересобирается на каждом билде — правки параметров (цвет,
+        // burst, размер) подхватываются без ручного удаления .prefab.
         var prefabPath = $"{PrefabsDir}/CoinPickupVfx.prefab";
-        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-        if (existing != null) return existing;
 
         var go = new GameObject("CoinPickupVfx");
         var ps = go.AddComponent<ParticleSystem>();
@@ -538,9 +538,8 @@ public static class SceneBuilder
         // World-space Canvas с UI Text: рисуется поверх спрайтов в мировом
         // масштабе, поддерживает кириллицу через Roboto. Scale 0.01 →
         // 100 px текста = 1 unit, нормальный размер «+1»/«-2» над объектом.
+        // Префаб пересобирается каждый билд — правки подхватываются сразу.
         var prefabPath = $"{PrefabsDir}/FloatingText.prefab";
-        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-        if (existing != null) return existing;
 
         var go = new GameObject("FloatingText");
         var canvas = go.AddComponent<Canvas>();
