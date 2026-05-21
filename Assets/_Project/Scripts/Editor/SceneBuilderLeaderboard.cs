@@ -53,16 +53,19 @@ public static class SceneBuilderLeaderboard
             new Vector2(0, -50), new Vector2(900, 160),
             TextAnchor.MiddleCenter);
 
-        // 4. Шапка таблицы (#, Имя, Очки) — фикс над списком
+        // 4. Шапка таблицы (#, Имя, Очки) — позиции рассчитаны под ширину
+        //    ScrollRect 1200 (то же значение что и в шутере).
         MkText(ct, "HeaderRank",  font, 36, "#",     Center(), Center(),
-            new Vector2(-580, 320), new Vector2(120, 50), TextAnchor.MiddleCenter);
+            new Vector2(-440, 320), new Vector2(120, 50), TextAnchor.MiddleCenter);
         MkText(ct, "HeaderName",  font, 36, "Имя",   Center(), Center(),
-            new Vector2(-170, 320), new Vector2(600, 50), TextAnchor.MiddleLeft);
+            new Vector2(-130, 320), new Vector2(500, 50), TextAnchor.MiddleLeft);
         MkText(ct, "HeaderScore", font, 36, "Очки",  Center(), Center(),
-            new Vector2(440, 320),  new Vector2(220, 50), TextAnchor.MiddleRight);
+            new Vector2(330, 320),  new Vector2(220, 50), TextAnchor.MiddleRight);
 
         // 5. ScrollRect: Viewport (с RectMask2D) → Content (VLG + Fitter).
         //    LeaderboardView рендерит строки в content в OnEnable.
+        //    Ширина 1200 согласована с шутером — строка не растягивается
+        //    через весь экран.
         var scrollGO = new GameObject("Scroll", typeof(RectTransform));
         scrollGO.transform.SetParent(ct, false);
         var scrollRT = scrollGO.GetComponent<RectTransform>();
@@ -70,7 +73,7 @@ public static class SceneBuilderLeaderboard
         scrollRT.anchorMax = Center();
         scrollRT.pivot = Center();
         scrollRT.anchoredPosition = new Vector2(0, -20);
-        scrollRT.sizeDelta = new Vector2(1500, 600);
+        scrollRT.sizeDelta = new Vector2(1200, 600);
         var scroll = scrollGO.AddComponent<ScrollRect>();
         scroll.horizontal = false;
         scroll.vertical = true;

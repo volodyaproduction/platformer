@@ -12,6 +12,11 @@ public static class SceneBuilderMainMenu
 {
     public const string ScenePath = "Assets/_Project/Scenes/MainMenu.unity";
 
+    // Общая «макарон»-палитра кнопок главного меню. Те же цвета — в шутере.
+    static readonly Color ColorStart       = new Color(0.659f, 0.835f, 0.729f); // #A8D5BA шалфей
+    static readonly Color ColorNickname    = new Color(0.706f, 0.804f, 0.929f); // #B4CDED лавандовый
+    static readonly Color ColorLeaderboard = new Color(0.957f, 0.867f, 0.643f); // #F4DDA4 ванильный
+
     public static void Build()
     {
         // 1. Пустая сцена
@@ -56,39 +61,38 @@ public static class SceneBuilderMainMenu
         menuRT.offsetMax = Vector2.zero;
         var menu = menuRoot.AddComponent<MenuController>();
 
-        // 6. Заголовок
+        // 6. Заголовок — отступ от верха согласован с шутером
         CreateText(canvasGO.transform, "Title", font,
             fontSize: 110, text: "2D-платформер",
-            anchoredPos: new Vector2(0, -160),
-            size: new Vector2(1400, 200),
+            anchoredPos: new Vector2(0, -100),
+            size: new Vector2(1400, 180),
             anchor: new Vector2(0.5f, 1f),
             pivot: new Vector2(0.5f, 1f));
 
-        // 7. Кнопка «Старт» — синяя, в тон restart-кнопке в игре
+        // 7. Кнопка «Старт» — шалфей (действие)
         menu.startButton = CreateButton(menuRoot.transform, "StartButton", font,
             label: "Старт", labelOut: out _,
-            color: new Color(0.2f, 0.6f, 0.9f),
+            color: ColorStart,
             anchoredPos: new Vector2(0, 130),
             size: new Vector2(520, 110));
 
-        // 7a. Кнопка «Никнейм» — серая, между Стартом и Лидербордом.
+        // 7a. Кнопка «Никнейм» — лавандовый, широкая под Telegram-ники.
         // Лейбл подменяется в MenuController.RefreshNameLabel(): «Указать
-        // никнейм» если имени нет, «Мой никнейм X» если есть. Ширина больше
-        // дефолтной — длинные Telegram-ники должны помещаться.
+        // никнейм» если имени нет, «Мой никнейм X» если есть.
         menu.nameButton = CreateButton(menuRoot.transform, "NameButton", font,
             label: "Указать никнейм", labelOut: out var nameLabel,
-            color: new Color(0.45f, 0.45f, 0.5f),
+            color: ColorNickname,
             anchoredPos: new Vector2(0, 0),
             size: new Vector2(680, 100));
         menu.nameButtonLabel = nameLabel;
 
-        // 7b. Кнопка «Лидерборд» — оранжевая, ниже
+        // 7b. Кнопка «Лидерборд» — ванильный, узкая
         menu.leaderboardButton = CreateButton(menuRoot.transform,
             "LeaderboardButton", font,
             label: "Лидерборд", labelOut: out _,
-            color: new Color(0.9f, 0.6f, 0.2f),
+            color: ColorLeaderboard,
             anchoredPos: new Vector2(0, -130),
-            size: new Vector2(520, 100));
+            size: new Vector2(420, 90));
 
         // 7c. NameInputDialog поверх меню — переиспользуем фабрику из
         // SceneBuilder (та же форма, что и в Main.unity)
@@ -166,6 +170,12 @@ public static class SceneBuilderMainMenu
         t.fontSize = 44;
         t.color = Color.white;
         t.alignment = TextAnchor.MiddleCenter;
+
+        // Тёмная обводка для читаемости белого текста на светлых пастелях
+        var outline = textGO.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.6f);
+        outline.effectDistance = new Vector2(2, -2);
+
         var trt = textGO.GetComponent<RectTransform>();
         trt.anchorMin = Vector2.zero;
         trt.anchorMax = Vector2.one;

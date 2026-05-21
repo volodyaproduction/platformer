@@ -728,7 +728,7 @@ public static class SceneBuilder
         error.color = new Color(1f, 0.6f, 0.4f);
 
         var submit = CreatePauseButton(root.transform, "SubmitButton",
-            "OK", new Color(0.2f, 0.6f, 0.9f),
+            "OK", new Color(0.659f, 0.835f, 0.729f),    // шалфей — действие
             anchoredPos: new Vector2(0, -200), size: new Vector2(280, 90));
 
         root.SetActive(false);
