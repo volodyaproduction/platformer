@@ -6,6 +6,7 @@
 
 ## Управление
 
+- Перед раундом — главное меню с кнопкой **«Старт»**
 - **A / D** или **← / →** — движение
 - **Space** — прыжок (доступен двойной)
 - Падение в яму → автоматический рестарт уровня
@@ -73,7 +74,7 @@ cd platformer
 
 Разбита по назначению: что выполняется в игре, что только собирает проект, где ассеты, где результаты сборки.
 
-### Игровой код (попадает в билд) — 291 строка
+### Игровой код (попадает в билд)
 
 ```
 Assets/_Project/Scripts/
@@ -84,16 +85,18 @@ Assets/_Project/Scripts/
 │   ├── FinishZone.cs         ← победа при касании флага
 │   └── CameraFollowX.cs      ← камера следит по X с фикс. Y
 └── Systems/
-    └── GameManager.cs        ← singleton, счётчик, UI, аудио
+    ├── GameManager.cs        ← singleton, счётчик, UI, аудио
+    └── MenuController.cs     ← кнопка «Старт» в главном меню
 ```
 
-Сам платформер компактный — пять gameplay-скриптов и один менеджер.
+Сам платформер компактный — пять gameplay-скриптов и два UI/менеджера.
 
 ### Editor-инфраструктура (в билд **не** попадает) — 760 строк
 
 ```
 Assets/_Project/Scripts/Editor/
 ├── SceneBuilder.cs                  ← собирает Main.unity (638 LOC)
+├── SceneBuilderMainMenu.cs          ← собирает MainMenu.unity
 ├── BuildScript.cs                   ← BuildWebGL / BuildWindows
 └── KenneyTexturePostprocessor.cs    ← PPU=128 для импорта спрайтов Kenney
 ```
@@ -117,6 +120,7 @@ Assets/_Project/
 
 ```
 Assets/_Project/
+├── Scenes/MainMenu.unity          ← пересоздаётся SceneBuilderMainMenu (Build Index 0)
 ├── Scenes/Main.unity              ← пересоздаётся SceneBuilder при сборке
 ├── Art/Tilemaps/                  ← Tile-ассеты, генерируются SceneBuilder
 └── Prefabs/CoinPickupVfx.prefab   ← VFX-партикл, генерируется SceneBuilder
