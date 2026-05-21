@@ -78,8 +78,10 @@ public static class SceneBuilder
         CreateFinishZone();
         CreateCeiling();
 
-        // 13. UI: Canvas со счётом и панелью победы + кнопка рестарта
-        var (scoreText, winPanel) = CreateUI(out var restartButton);
+        // 13. UI: Canvas со счётом и панелью победы + кнопка рестарта +
+        // экранные кнопки тач-управления (← ↑ →)
+        var playerCtrl = player.GetComponent<PlayerController>();
+        var (scoreText, winPanel) = CreateUI(playerCtrl, out var restartButton);
 
         // 14. GameManager собирает все ссылки
         var gameManager = CreateGameManager(scoreText, winPanel);
@@ -456,7 +458,7 @@ public static class SceneBuilder
     // ===== UI =====
 
     static (Text scoreText, GameObject winPanel) CreateUI(
-        out Button restartButton)
+        PlayerController player, out Button restartButton)
     {
         // 41. EventSystem нужен для кликов
         var es = new GameObject("EventSystem");
@@ -549,7 +551,59 @@ public static class SceneBuilder
         btnTextRT.offsetMin = Vector2.zero;
         btnTextRT.offsetMax = Vector2.zero;
 
+        // 47. Экранные кнопки тач-управления (200×200 в reference 1920×1080):
+        // слева пара < >, справа ^. Полупрозрачные, чтобы не закрывать игру.
+        // ASCII вместо ←→↑: в Roboto-Regular.ttf (subset под кириллицу) нет
+        // глифов стрелочного блока Unicode, поэтому они рисовались пустыми.
+        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Left,
+            "TouchLeft",  "<", new Vector2(0, 0), new Vector2(160, 160));
+        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Right,
+            "TouchRight", ">", new Vector2(0, 0), new Vector2(380, 160));
+        CreateTouchButton(canvasGO.transform, player, TouchButton.Action.Jump,
+            "TouchJump",  "^", new Vector2(1, 0), new Vector2(-160, 160));
+
         return (scoreText, winPanel);
+    }
+
+    static void CreateTouchButton(Transform canvas, PlayerController player,
+        TouchButton.Action action, string name, string label,
+        Vector2 anchor, Vector2 anchoredPos)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(canvas, false);
+
+        var img = go.AddComponent<Image>();
+        img.color = new Color(1f, 1f, 1f, 0.25f);
+        go.AddComponent<Button>();
+
+        var tb = go.AddComponent<TouchButton>();
+        tb.player = player;
+        tb.action = action;
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(200, 200);
+        rt.anchoredPosition = anchoredPos;
+
+        var textGO = new GameObject("Label");
+        textGO.transform.SetParent(go.transform, false);
+        var text = textGO.AddComponent<Text>();
+        text.text = label;
+        text.font = LoadFont();
+        text.fontSize = 120;
+        text.color = Color.white;
+        text.alignment = TextAnchor.MiddleCenter;
+        // Обводка — как у счётчика монет, для читаемости на любом фоне
+        var outline = textGO.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2, -2);
+        var textRT = text.GetComponent<RectTransform>();
+        textRT.anchorMin = Vector2.zero;
+        textRT.anchorMax = Vector2.one;
+        textRT.offsetMin = Vector2.zero;
+        textRT.offsetMax = Vector2.zero;
     }
 
     static void WireRestartButton(Button btn, GameManager gm)

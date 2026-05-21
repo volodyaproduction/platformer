@@ -2,6 +2,7 @@ using UnityEngine;
 
 // Контроллер игрока: горизонтальное движение, прыжок с двойным прыжком,
 // проверка земли через OverlapCircle + LayerMask, простая покадровая анимация.
+// Тач-управление с экранных кнопок — через публичные SetTouchMove / RequestJump.
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(CapsuleCollider2D))]
 [RequireComponent(typeof(SpriteRenderer))]
@@ -38,6 +39,7 @@ public class PlayerController : MonoBehaviour
     private int jumpsLeft;
     private bool isGrounded;
     private float horizontalInput;
+    private float touchMoveInput;
     private bool jumpRequested;
     private float walkFrameTimer;
     private int walkFrame;
@@ -52,8 +54,11 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // 6. Чтение ввода в Update (важно: разная частота с FixedUpdate)
-        horizontalInput = Input.GetAxisRaw("Horizontal");
+        // 6. Клавиатура; тач-движение перебивает, если кнопка зажата
+        float keyboard = Input.GetAxisRaw("Horizontal");
+        horizontalInput = Mathf.Abs(touchMoveInput) > 0.01f
+            ? touchMoveInput : keyboard;
+
         if (Input.GetKeyDown(KeyCode.Space) && jumpsLeft > 0)
         {
             jumpRequested = true;
@@ -96,9 +101,20 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // 12. Публичный API для экранных кнопок (TouchButton.cs)
+    public void SetTouchMove(float value)
+    {
+        touchMoveInput = Mathf.Clamp(value, -1f, 1f);
+    }
+
+    public void RequestJump()
+    {
+        if (jumpsLeft > 0) jumpRequested = true;
+    }
+
     void UpdateSprite()
     {
-        // 12. Выбор спрайта по состоянию
+        // 13. Выбор спрайта по состоянию
         if (!isGrounded && jumpSprite != null)
         {
             sr.sprite = jumpSprite;
@@ -124,7 +140,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // 13. Визуализация ground-check в Editor (помогает при отладке)
+    // 14. Визуализация ground-check в Editor (помогает при отладке)
     void OnDrawGizmosSelected()
     {
         if (groundCheck == null) return;
