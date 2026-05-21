@@ -204,7 +204,7 @@ public static class SceneBuilder
         // 27. AudioSource для звука прыжка
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
-        audio.volume = 0.35f;
+        audio.volume = 0.1f;
 
         // 28. GroundCheck чуть ниже нижнего края коллайдера (нижний край
         // спрайта на localY=-0.72; ставим круг на -0.7, чтобы радиус 0.15
@@ -965,7 +965,7 @@ public static class SceneBuilder
 
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
-        audio.volume = 0.35f;
+        audio.volume = 0.1f;
         gm.sfxSource = audio;
         gm.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
         gm.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");
