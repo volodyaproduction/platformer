@@ -204,6 +204,7 @@ public static class SceneBuilder
         // 27. AudioSource для звука прыжка
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
+        audio.volume = 0.35f;
 
         // 28. GroundCheck чуть ниже нижнего края коллайдера (нижний край
         // спрайта на localY=-0.72; ставим круг на -0.7, чтобы радиус 0.15
@@ -727,9 +728,16 @@ public static class SceneBuilder
             size: new Vector2(700, 50));
         error.color = new Color(1f, 0.6f, 0.4f);
 
+        // Две кнопки в одном ряду: «Отмена» слева (нейтральный), OK справа
+        // (шалфей — действие). Игрок может закрыть диалог без сохранения —
+        // в GameOverPanel при этом счёт не отправляется в лидерборд.
+        var cancel = CreatePauseButton(root.transform, "CancelButton",
+            "Отмена", new Color(0.7f, 0.7f, 0.7f),
+            anchoredPos: new Vector2(-160, -200), size: new Vector2(280, 90));
+
         var submit = CreatePauseButton(root.transform, "SubmitButton",
-            "OK", new Color(0.659f, 0.835f, 0.729f),    // шалфей — действие
-            anchoredPos: new Vector2(0, -200), size: new Vector2(280, 90));
+            "OK", new Color(0.659f, 0.835f, 0.729f),
+            anchoredPos: new Vector2(160, -200), size: new Vector2(280, 90));
 
         root.SetActive(false);
 
@@ -739,6 +747,7 @@ public static class SceneBuilder
         dialog.root = root;
         dialog.nameField = field;
         dialog.submitButton = submit;
+        dialog.cancelButton = cancel;
         dialog.hintText = hint;
         dialog.errorText = error;
         EditorUtility.SetDirty(dialog);
@@ -956,6 +965,7 @@ public static class SceneBuilder
 
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
+        audio.volume = 0.35f;
         gm.sfxSource = audio;
         gm.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
         gm.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");

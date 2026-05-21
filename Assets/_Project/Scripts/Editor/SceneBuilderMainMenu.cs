@@ -77,10 +77,10 @@ public static class SceneBuilderMainMenu
             size: new Vector2(520, 110));
 
         // 7a. Кнопка «Никнейм» — лавандовый, широкая под Telegram-ники.
-        // Лейбл подменяется в MenuController.RefreshNameLabel(): «Указать
-        // никнейм» если имени нет, «Мой никнейм X» если есть.
+        // Лейбл подменяется в MenuController.RefreshNameLabel(): «Мой никнейм»
+        // если имени нет, «Мой никнейм: X» если есть.
         menu.nameButton = CreateButton(menuRoot.transform, "NameButton", font,
-            label: "Указать никнейм", labelOut: out var nameLabel,
+            label: "Мой никнейм", labelOut: out var nameLabel,
             color: ColorNickname,
             anchoredPos: new Vector2(0, 0),
             size: new Vector2(680, 100));

@@ -61,10 +61,17 @@ public class GameOverPanel : MonoBehaviour
         if (player != null) player.Freeze();
 
         // 2. Первая игра — сначала имя, потом сабмит. Иначе сразу сабмит.
+        //    Если игрок закрыл диалог «Отмена» — счёт не отправляется.
         if (!PlayerIdentity.HasName())
         {
             if (nameDialog != null)
-                nameDialog.OpenForFirstTime(_ => SubmitScore(finalScore));
+                nameDialog.OpenForFirstTime(
+                    onSuccess: _ => SubmitScore(finalScore),
+                    onCancel: () =>
+                    {
+                        if (recordText != null)
+                            recordText.text = "Счёт не сохранён";
+                    });
             else
                 SubmitScore(finalScore);    // диалога нет — шлём без имени
         }

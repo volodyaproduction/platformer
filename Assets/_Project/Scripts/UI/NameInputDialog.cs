@@ -4,11 +4,13 @@ using UnityEngine.UI;
 
 // Диалог ввода/смены никнейма для лидерборда. Одна и та же форма в двух
 // сценариях:
-//   OpenForFirstTime — открывается после первого раунда, если PlayerIdentity
-//     ещё не имеет имени. После успешной отправки на сервер вызывает callback
-//     с выбранным никнеймом; вызывающий код сразу шлёт счёт.
+//   OpenForFirstTime — открывается после раунда, если PlayerIdentity ещё не
+//     имеет имени. Принимает два callback'а: onSuccess — имя успешно записано
+//     на сервер (вызывающий шлёт счёт), onCancel — игрок закрыл диалог без
+//     ввода (счёт не отправляется).
 //   OpenForChange — открывается из главного меню для смены уже выбранного
-//     никнейма. Поле предзаполнено текущим именем.
+//     никнейма. Поле предзаполнено текущим именем. «Отмена» просто закрывает
+//     диалог.
 //
 // Уникальность никнейма проверяется на сервере (HTTP 409 → ошибка «занято»).
 // Подсказка одинаковая в обоих режимах: пригласить указать Telegram-ник с `@`,
@@ -19,10 +21,12 @@ public class NameInputDialog : MonoBehaviour
     public GameObject root;
     public InputField nameField;
     public Button submitButton;
+    public Button cancelButton;
     public Text hintText;
     public Text errorText;
 
     Action<string> onSuccess;
+    Action onCancel;
 
     const string Hint =
         "Поставь @ впереди — твой ник станет ссылкой на Telegram, " +
@@ -32,28 +36,37 @@ public class NameInputDialog : MonoBehaviour
     {
         if (root != null) root.SetActive(false);
         if (submitButton != null) submitButton.onClick.AddListener(HandleSubmit);
+        if (cancelButton != null) cancelButton.onClick.AddListener(HandleCancel);
         if (errorText != null) errorText.text = string.Empty;
     }
 
     void OnDisable()
     {
         if (submitButton != null) submitButton.onClick.RemoveListener(HandleSubmit);
+        if (cancelButton != null) cancelButton.onClick.RemoveListener(HandleCancel);
     }
 
-    public void OpenForFirstTime(Action<string> callback)
+    public void OpenForFirstTime(Action<string> onSuccess, Action onCancel = null)
     {
-        Open(initialName: string.Empty, callback);
+        Open(initialName: string.Empty, onSuccess, onCancel);
     }
 
-    public void OpenForChange(Action<string> callback)
+    public void OpenForChange(Action<string> onSuccess)
     {
-        Open(initialName: PlayerIdentity.GetName(), callback);
+        Open(initialName: PlayerIdentity.GetName(), onSuccess, cancel: null);
     }
 
-    void Open(string initialName, Action<string> callback)
+    void Open(string initialName, Action<string> success, Action cancel)
     {
-        onSuccess = callback;
-        if (root != null) root.SetActive(true);
+        onSuccess = success;
+        onCancel = cancel;
+        if (root != null)
+        {
+            root.SetActive(true);
+            // Поверх любых других панелей того же Canvas: GameOverPanel
+            // создаётся позже в иерархии, иначе закроет диалог собой.
+            root.transform.SetAsLastSibling();
+        }
         if (nameField != null) nameField.text = initialName ?? string.Empty;
         if (hintText != null) hintText.text = Hint;
         if (errorText != null) errorText.text = string.Empty;
@@ -86,10 +99,7 @@ public class NameInputDialog : MonoBehaviour
         // 2. Имя не изменилось — сервер дёргать не нужно, просто закрываем
         if (name == PlayerIdentity.GetName())
         {
-            if (root != null) root.SetActive(false);
-            var cb = onSuccess;
-            onSuccess = null;
-            cb?.Invoke(name);
+            CloseAndInvokeSuccess(name);
             return;
         }
 
@@ -111,10 +121,7 @@ public class NameInputDialog : MonoBehaviour
             if (resp != null && resp.ok)
             {
                 PlayerIdentity.SetName(name);
-                if (root != null) root.SetActive(false);
-                var cb = onSuccess;
-                onSuccess = null;
-                cb?.Invoke(name);
+                CloseAndInvokeSuccess(name);
                 return;
             }
 
@@ -131,6 +138,24 @@ public class NameInputDialog : MonoBehaviour
         }
     }
 
+    void HandleCancel()
+    {
+        if (root != null) root.SetActive(false);
+        var cb = onCancel;
+        onSuccess = null;
+        onCancel = null;
+        cb?.Invoke();
+    }
+
+    void CloseAndInvokeSuccess(string name)
+    {
+        if (root != null) root.SetActive(false);
+        var cb = onSuccess;
+        onSuccess = null;
+        onCancel = null;
+        cb?.Invoke(name);
+    }
+
     void ShowError(string msg)
     {
         if (errorText != null) errorText.text = msg;
@@ -139,6 +164,7 @@ public class NameInputDialog : MonoBehaviour
     void SetInteractable(bool on)
     {
         if (submitButton != null) submitButton.interactable = on;
+        if (cancelButton != null) cancelButton.interactable = on;
         if (nameField != null) nameField.interactable = on;
     }
 }
