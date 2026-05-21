@@ -54,6 +54,10 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        // На паузе (Time.timeScale=0) не читаем ввод — иначе после возобновления
+        // игрок «вспомнит» зажатое направление и побежит сам.
+        if (Time.timeScale == 0f) return;
+
         // 6. Клавиатура; тач-движение перебивает, если кнопка зажата
         float keyboard = Input.GetAxisRaw("Horizontal");
         horizontalInput = Mathf.Abs(touchMoveInput) > 0.01f

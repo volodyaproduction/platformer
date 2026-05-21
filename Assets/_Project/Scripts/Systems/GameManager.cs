@@ -23,6 +23,8 @@ public class GameManager : MonoBehaviour
     private int totalCoins;
     private bool gameWon;
 
+    public bool IsWon => gameWon;
+
     void Awake()
     {
         // 3. Singleton-инициализация

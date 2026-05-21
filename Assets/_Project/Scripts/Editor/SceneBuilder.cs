@@ -87,6 +87,10 @@ public static class SceneBuilder
         var gameManager = CreateGameManager(scoreText, winPanel);
         WireRestartButton(restartButton, gameManager);
 
+        // Пауза по ESC: оверлей с кнопками «Продолжить» / «В меню»
+        var canvasTr = GameObject.Find("Canvas").transform;
+        CreatePausePanel(canvasTr);
+
         // 15. Связываем поля PlayerController после создания зависимостей
         ConfigurePlayerComponents(player);
 
@@ -604,6 +608,94 @@ public static class SceneBuilder
         textRT.anchorMax = Vector2.one;
         textRT.offsetMin = Vector2.zero;
         textRT.offsetMax = Vector2.zero;
+    }
+
+    // ===== Pause panel =====
+
+    static void CreatePausePanel(Transform canvas)
+    {
+        var panelGO = new GameObject("PausePanel");
+        panelGO.transform.SetParent(canvas, false);
+        var img = panelGO.AddComponent<Image>();
+        img.color = new Color(0, 0, 0, 0.75f);
+        var rt = panelGO.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        panelGO.SetActive(false);
+
+        var title = CreatePauseText(panelGO.transform, "Title", "Пауза",
+            fontSize: 96, anchoredPos: new Vector2(0, 120),
+            size: new Vector2(800, 160));
+
+        var resume = CreatePauseButton(panelGO.transform, "ResumeButton",
+            "Продолжить", new Color(0.2f, 0.6f, 0.9f),
+            anchoredPos: new Vector2(0, -40), size: new Vector2(420, 100));
+
+        var menu = CreatePauseButton(panelGO.transform, "MenuButton",
+            "В меню", new Color(0.4f, 0.4f, 0.4f),
+            anchoredPos: new Vector2(0, -160), size: new Vector2(420, 90));
+
+        // Контроллер вешаем на отдельный GO в Canvas — он управляет panel/кнопками
+        var ctrlGO = new GameObject("PauseController");
+        ctrlGO.transform.SetParent(canvas, false);
+        var ctrl = ctrlGO.AddComponent<PauseController>();
+        ctrl.panel = panelGO;
+        ctrl.resumeButton = resume;
+        ctrl.menuButton = menu;
+        EditorUtility.SetDirty(ctrl);
+    }
+
+    static Text CreatePauseText(Transform parent, string name, string content,
+        int fontSize, Vector2 anchoredPos, Vector2 size)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var t = go.AddComponent<Text>();
+        t.text = content;
+        t.font = LoadFont();
+        t.fontSize = fontSize;
+        t.color = Color.white;
+        t.alignment = TextAnchor.MiddleCenter;
+        var trt = go.GetComponent<RectTransform>();
+        trt.anchorMin = new Vector2(0.5f, 0.5f);
+        trt.anchorMax = new Vector2(0.5f, 0.5f);
+        trt.pivot = new Vector2(0.5f, 0.5f);
+        trt.anchoredPosition = anchoredPos;
+        trt.sizeDelta = size;
+        return t;
+    }
+
+    static Button CreatePauseButton(Transform parent, string name, string label,
+        Color color, Vector2 anchoredPos, Vector2 size)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var img = go.AddComponent<Image>();
+        img.color = color;
+        var btn = go.AddComponent<Button>();
+        var brt = go.GetComponent<RectTransform>();
+        brt.anchorMin = new Vector2(0.5f, 0.5f);
+        brt.anchorMax = new Vector2(0.5f, 0.5f);
+        brt.pivot = new Vector2(0.5f, 0.5f);
+        brt.anchoredPosition = anchoredPos;
+        brt.sizeDelta = size;
+
+        var textGO = new GameObject("Label");
+        textGO.transform.SetParent(go.transform, false);
+        var txt = textGO.AddComponent<Text>();
+        txt.text = label;
+        txt.font = LoadFont();
+        txt.fontSize = 44;
+        txt.color = Color.white;
+        txt.alignment = TextAnchor.MiddleCenter;
+        var trt = textGO.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+        return btn;
     }
 
     static void WireRestartButton(Button btn, GameManager gm)
