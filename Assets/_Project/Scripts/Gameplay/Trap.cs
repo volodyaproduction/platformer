@@ -19,9 +19,14 @@ public class Trap : MonoBehaviour
         var pc = other.GetComponent<PlayerController>();
         if (pc == null || pc.IsInvulnerable) return;
 
-        // 1. Штраф очков
+        // 1. Штраф очков + всплывающий «-2» над игроком
         if (GameManager.Instance != null)
+        {
             GameManager.Instance.AddPenalty(penalty);
+            GameManager.Instance.SpawnFloatingText(
+                other.transform.position + Vector3.up * 0.8f,
+                $"-{penalty}", new Color(1f, 0.3f, 0.2f));
+        }
 
         // 2. Knockback: вверх + назад относительно текущего движения
         var rb = other.attachedRigidbody;

@@ -24,7 +24,8 @@
 **Сделано из дополнительных:**
 
 - [x] **Раунд 30 секунд** — счёт = количество собранных монет за раунд (за вычетом штрафов от ловушек)
-- [x] **Огоньки-ловушки** — 6 шт. в стратегических местах; касание = −2 монеты + knockback вверх/назад + 0.6 сек неуязвимости (защита от повторного триггера)
+- [x] **Шипы-ловушки** — 6 шт. на земле в местах прохода; касание = −2 монеты + knockback вверх/назад + 0.6 сек неуязвимости (защита от повторного триггера). Спрайт `spike.png` сгенерирован программно через `AssetForge`
+- [x] **Floating text** — при сборе монеты всплывает `+1` жёлтым, при ударе о шипы — `-2` красным; поднимается вверх и затухает за 0.8 сек
 - [x] **Локальный лидерборд** — топ-5 в `PlayerPrefs`, попадание в топ → диалог ввода имени
 - [x] Двойной прыжок (`jumpsLeft = 2`, сбрасывается при касании земли)
 - [x] Эффект частиц при сборе монеты (жёлтые искры, авто-уничтожение)
@@ -91,7 +92,7 @@ Assets/_Project/Scripts/
 ├── Gameplay/
 │   ├── PlayerController.cs   ← движение, прыжок, ground-check, Freeze, инвулн
 │   ├── Coin.cs               ← триггер сбора монеты
-│   ├── Trap.cs               ← огонёк-ловушка: –2 монеты + knockback
+│   ├── Trap.cs               ← шипы-ловушка: –2 монеты + knockback
 │   ├── KillZone.cs           ← конец раунда при падении в яму
 │   ├── FinishZone.cs         ← конец раунда при касании флага
 │   ├── TouchButton.cs        ← экранные кнопки тач-управления
@@ -102,6 +103,7 @@ Assets/_Project/Scripts/
 │   └── PauseController.cs    ← пауза по ESC и бургер-кнопке
 └── UI/
     ├── HUD.cs                ← счёт + таймер (подписан на GameManager)
+    ├── FloatingText.cs       ← всплывающий «+1»/«-2» с фейдом
     ├── GameOverPanel.cs      ← итог раунда + 3 кнопки + диалог имени
     ├── NameInputDialog.cs    ← ввод имени в топ-5
     └── LeaderboardView.cs    ← отображение топ-5 на сцене Leaderboard
@@ -116,8 +118,9 @@ Assets/_Project/Scripts/Editor/
 ├── SceneBuilder.cs                  ← собирает Main.unity (игра)
 ├── SceneBuilderMainMenu.cs          ← собирает MainMenu.unity
 ├── SceneBuilderLeaderboard.cs       ← собирает Leaderboard.unity
+├── AssetForge.cs                    ← рисует spike.png пиксельно
 ├── BuildScript.cs                   ← BuildWebGL / BuildWindows
-└── KenneyTexturePostprocessor.cs    ← PPU=128 для импорта спрайтов Kenney
+└── KenneyTexturePostprocessor.cs    ← PPU=128 для Kenney и Art/Generated
 ```
 
 **Что конкретно делает `SceneBuilder.cs`:** создаёт пустую сцену `Main.unity`, добавляет в неё камеру, игрока с Rigidbody2D и анимацией, тайлмап (земля и платформы для удлинённого уровня), монеты в конкретных координатах, KillZone и Ceiling под/над уровнем, флаг финиша, Canvas со счётчиком, таймером, GameOverPanel и диалогом ввода имени.

@@ -53,17 +53,18 @@ public static class SceneBuilder
         new Vector2(94f, 6.5f),     // на финальной высокой платформе y=5
     };
 
-    // 3a. Координаты «огоньков-ловушек» (sparkle.png с красным тинтом).
-    // Касание = –2 монеты + knockback. Расставлены в местах прохода,
-    // часто рядом с монетой — даёт risk/reward выбор.
+    // 3a. Координаты шипов-ловушек. Размещены на земле — игрок прыгает над
+    // ними (классика платформера). Y=1.19 = верх тайла земли (y=1) +
+    // половина высоты спрайта шипов (0.375 unit при 96×48 px и PPU=128).
+    // Подальше от монет, чтобы не было overlap (фикс по прошлому ревью).
     static readonly Vector2[] TrapPositions = new Vector2[]
     {
-        new Vector2(14.5f, 5.5f),   // перед монетой на платформе 15..17
-        new Vector2(22.5f, 6.5f),   // справа от монеты на самой высокой y=5
-        new Vector2(36f, 5.5f),     // на платформе 36..38 рядом с монетой
-        new Vector2(54.5f, 5.5f),   // на платформе 53..55 над провалом
-        new Vector2(82f, 6.5f),     // рядом с монетой на высокой y=5
-        new Vector2(93f, 6.5f),     // рядом с монетой перед финишем
+        new Vector2(13.5f, 1.19f),   // ground 11..14
+        new Vector2(21f,   1.19f),   // ground 18..24
+        new Vector2(40f,   1.19f),   // ground 39..44 — сразу после ямы
+        new Vector2(51f,   1.19f),   // ground 47..52
+        new Vector2(74.5f, 1.19f),   // ground 71..75 (новая зона удлинения)
+        new Vector2(93f,   1.19f),   // ground 89..100 — перед финишем
     };
 
     // 4. Стартовая точка и финиш. Игрок при стоянии на земле должен иметь
@@ -95,13 +96,14 @@ public static class SceneBuilder
         // 9. Привязываем камеру к игроку — только по X, Y фиксированный
         AttachCameraFollow(mainCamera.gameObject, player.transform);
 
-        // 10. VFX-префаб для эффекта сбора монеты
+        // 10. VFX-префабы: партикл сбора + всплывающий текст «+1/−2»
         var vfxPrefab = CreateCoinPickupVfxPrefab();
+        var floatingTextPrefab = CreateFloatingTextPrefab();
 
         // 11. Монеты, привязанные к VFX
         SpawnCoins(vfxPrefab);
 
-        // 11a. Ловушки-«огоньки» (sparkle.png с красным тинтом)
+        // 11a. Шипы-ловушки (sprite сгенерирован AssetForge)
         SpawnTraps();
 
         // 12. KillZone под уровнем + FinishZone справа + Ceiling сверху
@@ -115,7 +117,7 @@ public static class SceneBuilder
         var ui = CreateUI(playerCtrl);
 
         // 14. GameManager + HUD: один объект, HUD подписан на события.
-        CreateGameManager(ui.scoreText, ui.timerText);
+        CreateGameManager(ui.scoreText, ui.timerText, floatingTextPrefab);
 
         // Пауза по ESC: оверлей с кнопками «Продолжить» / «В меню»
         var canvasTr = GameObject.Find("Canvas").transform;
@@ -409,23 +411,24 @@ public static class SceneBuilder
 
     static void SpawnTraps()
     {
-        // sparkle.png 32x32 при PPU=128 = 0.25 unit. Scale 4 → 1 unit, как монета.
-        // Красный тинт превращает «искру» в «огонёк опасности» без новых ассетов.
-        var sprite = LoadSprite("Assets/_Project/Kenney/Items/sparkle.png");
+        // Спрайт «шипы» 96×48 px при PPU=128 = 0.75×0.375 unit. Pivot center.
+        // Сгенерирован в AssetForge перед сборкой сцены.
+        var sprite = LoadSprite("Assets/_Project/Art/Generated/spike.png");
         foreach (var pos in TrapPositions)
         {
             var go = new GameObject($"Trap_{pos.x:F0}_{pos.y:F0}");
             go.transform.position = pos;
-            go.transform.localScale = Vector3.one * 4f;
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            sr.color = new Color(1f, 0.3f, 0.1f);  // оранжево-красный
             sr.sortingOrder = 6;
 
-            var col = go.AddComponent<CircleCollider2D>();
+            // BoxCollider2D под прямоугольную форму шипов; чуть меньше
+            // визуала по высоте, щадим игрока на касании краем.
+            var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.radius = 0.32f;  // чуть меньше визуального размера — щадим игрока
+            col.size = new Vector2(0.7f, 0.32f);
+            col.offset = new Vector2(0f, -0.02f);
 
             go.AddComponent<Trap>();
         }
@@ -523,6 +526,52 @@ public static class SceneBuilder
         renderer.sortingOrder = 20;
 
         // 40. Сохранение в префаб и удаление инстанса из сцены
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+        Object.DestroyImmediate(go);
+        return prefab;
+    }
+
+    // ===== Floating text =====
+
+    static GameObject CreateFloatingTextPrefab()
+    {
+        // World-space Canvas с UI Text: рисуется поверх спрайтов в мировом
+        // масштабе, поддерживает кириллицу через Roboto. Scale 0.01 →
+        // 100 px текста = 1 unit, нормальный размер «+1»/«-2» над объектом.
+        var prefabPath = $"{PrefabsDir}/FloatingText.prefab";
+        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (existing != null) return existing;
+
+        var go = new GameObject("FloatingText");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.sortingOrder = 20;
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(200, 100);
+        go.transform.localScale = Vector3.one * 0.01f;
+
+        var textGO = new GameObject("Text");
+        textGO.transform.SetParent(go.transform, false);
+        var text = textGO.AddComponent<Text>();
+        text.font = LoadFont();
+        text.fontSize = 64;
+        text.fontStyle = FontStyle.Bold;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.color = Color.white;
+
+        var outline = textGO.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(3, -3);
+
+        var trt = textGO.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+
+        var ft = go.AddComponent<FloatingText>();
+        ft.text = text;
+
         var prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
         Object.DestroyImmediate(go);
         return prefab;
@@ -893,7 +942,8 @@ public static class SceneBuilder
 
     // ===== GameManager + HUD =====
 
-    static GameManager CreateGameManager(Text scoreText, Text timerText)
+    static GameManager CreateGameManager(Text scoreText, Text timerText,
+        GameObject floatingTextPrefab)
     {
         var go = new GameObject("GameManager");
         var gm = go.AddComponent<GameManager>();
@@ -903,6 +953,7 @@ public static class SceneBuilder
         gm.sfxSource = audio;
         gm.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
         gm.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");
+        gm.floatingTextPrefab = floatingTextPrefab;
 
         // HUD на том же объекте — подписывается на события GameManager
         var hud = go.AddComponent<HUD>();

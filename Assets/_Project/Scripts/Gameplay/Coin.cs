@@ -12,10 +12,13 @@ public class Coin : MonoBehaviour
         // 1. Реагируем только на игрока (по тегу)
         if (!other.CompareTag("Player")) return;
 
-        // 2. Обновляем счётчик через GameManager
+        // 2. Обновляем счётчик через GameManager + всплывающий «+1»
         if (GameManager.Instance != null)
         {
             GameManager.Instance.AddCoin();
+            GameManager.Instance.SpawnFloatingText(
+                transform.position + Vector3.up * 0.3f, "+1",
+                new Color(1f, 0.85f, 0.2f));
         }
 
         // 3. Спавним эффект частиц (бонус — VFX-префаб)

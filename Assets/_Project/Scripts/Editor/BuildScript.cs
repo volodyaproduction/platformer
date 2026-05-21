@@ -22,8 +22,9 @@ public static class BuildScript
 
     public static void BuildWindows()
     {
-        // Регенерируем все три сцены: Main (игра) → MainMenu → Leaderboard.
+        // Регенерируем сгенерированные ассеты (шипы и пр.) и все три сцены.
         // MainMenu добавится первой в BuildSettings, Leaderboard — последней.
+        AssetForge.BuildAll();
         SceneBuilder.Build();
         SceneBuilderMainMenu.Build();
         SceneBuilderLeaderboard.Build();
@@ -49,7 +50,8 @@ public static class BuildScript
 
     public static void BuildWebGL()
     {
-        // Регенерируем все три сцены (см. BuildWindows для порядка).
+        // Регенерируем сгенерированные ассеты + все три сцены (см. BuildWindows).
+        AssetForge.BuildAll();
         SceneBuilder.Build();
         SceneBuilderMainMenu.Build();
         SceneBuilderLeaderboard.Build();

@@ -20,6 +20,9 @@ public class GameManager : MonoBehaviour
     public AudioClip coinClip;
     public AudioClip victoryClip;
 
+    [Header("VFX")]
+    public GameObject floatingTextPrefab;
+
     public event Action<int> ScoreChanged;
     public event Action<float> TimeChanged;
     public event Action<int, EndReason> GameOver;
@@ -72,6 +75,14 @@ public class GameManager : MonoBehaviour
         if (!IsPlaying) return;
         Score = Mathf.Max(0, Score - amount);
         ScoreChanged?.Invoke(Score);
+    }
+
+    public void SpawnFloatingText(Vector3 worldPos, string text, Color color)
+    {
+        if (floatingTextPrefab == null) return;
+        var go = Instantiate(floatingTextPrefab, worldPos, Quaternion.identity);
+        var ft = go.GetComponent<FloatingText>();
+        if (ft != null) ft.Init(text, color);
     }
 
     public void EndRound(EndReason reason)

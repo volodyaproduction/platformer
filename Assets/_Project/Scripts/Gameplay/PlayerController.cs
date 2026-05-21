@@ -48,11 +48,12 @@ public class PlayerController : MonoBehaviour
 
     // Неуязвимость и блокировка управления h-скоростью на короткое время.
     // Используется Trap, чтобы knockback не «съедался» переписыванием
-    // velocity.x в FixedUpdate.
-    public bool IsInvulnerable => Time.time < invulnerableUntil;
+    // velocity.x в FixedUpdate. unscaledTime — чтобы инвулн доистекал во
+    // время паузы и не «висел» лишним отрезком после resume.
+    public bool IsInvulnerable => Time.unscaledTime < invulnerableUntil;
     public void StartInvulnerability(float duration)
     {
-        invulnerableUntil = Time.time + duration;
+        invulnerableUntil = Time.unscaledTime + duration;
     }
 
     // 5a. Заморозка управления (вызывается из GameOverPanel при конце раунда).
