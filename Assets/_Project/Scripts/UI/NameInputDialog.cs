@@ -83,7 +83,17 @@ public class NameInputDialog : MonoBehaviour
             return;
         }
 
-        // 2. Запрос на сервер. Кнопка блокируется на время запроса.
+        // 2. Имя не изменилось — сервер дёргать не нужно, просто закрываем
+        if (name == PlayerIdentity.GetName())
+        {
+            if (root != null) root.SetActive(false);
+            var cb = onSuccess;
+            onSuccess = null;
+            cb?.Invoke(name);
+            return;
+        }
+
+        // 3. Запрос на сервер. Кнопка блокируется на время запроса.
         SetInteractable(false);
         if (errorText != null) errorText.text = "Проверяем...";
 
@@ -108,7 +118,7 @@ public class NameInputDialog : MonoBehaviour
                 return;
             }
 
-            // 3. Локализация серверных ошибок
+            // 4. Локализация серверных ошибок
             var msg = resp != null ? resp.error : "network_error";
             ShowError(msg switch
             {
