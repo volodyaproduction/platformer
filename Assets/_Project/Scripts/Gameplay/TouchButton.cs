@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -10,13 +11,23 @@ public class TouchButton : MonoBehaviour,
     public PlayerController player;
     public Action action;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+    // Мост в JS (Assets/_Project/Plugins/WebGL/TouchDetect.jslib).
+    // Используем UA вместо Input.touchSupported: на десктопных Chrome/Safari
+    // последний выдаёт false positive (тач API без сенсорного экрана).
+    [DllImport("__Internal")] private static extern int IsMobileUA();
+#endif
+
     void Awake()
     {
-        // Прячем экранные кнопки на устройствах без сенсора (десктоп-браузер).
-        // Документация Unity рекомендует именно Input.touchSupported вместо
-        // проверки платформы — на WebGL он корректно возвращает false на ПК
-        // и true в мобильных браузерах.
-        if (!Input.touchSupported) gameObject.SetActive(false);
+        // Скрываем экранные кнопки на не-тач устройствах.
+        bool isTouch;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        isTouch = IsMobileUA() == 1;
+#else
+        isTouch = Input.touchSupported;
+#endif
+        if (!isTouch) gameObject.SetActive(false);
     }
 
     public void OnPointerDown(PointerEventData eventData)
