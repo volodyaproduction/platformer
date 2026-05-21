@@ -72,10 +72,11 @@ public class GameSession : MonoBehaviour
 
     public void AddPenalty(int amount)
     {
-        // Штраф за касание ловушки. Клампим к нулю — отрицательный счёт
-        // выглядит как баг и портит лидерборд.
+        // Штраф за касание ловушки. Клемпа к нулю нет — отрицательный итог
+        // допустим и попадает в лидерборд как есть (см. README, раздел
+        // «Защита от накрутки»: сервер тоже не валидирует знак).
         if (!IsPlaying) return;
-        Score = Mathf.Max(0, Score - amount);
+        Score -= amount;
         ScoreChanged?.Invoke(Score);
     }
 
