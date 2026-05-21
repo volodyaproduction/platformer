@@ -20,10 +20,10 @@ public class Trap : MonoBehaviour
         if (pc == null || pc.IsInvulnerable) return;
 
         // 1. Штраф очков + всплывающий «-2» над игроком
-        if (GameManager.Instance != null)
+        if (GameSession.Instance != null)
         {
-            GameManager.Instance.AddPenalty(penalty);
-            GameManager.Instance.SpawnFloatingText(
+            GameSession.Instance.AddPenalty(penalty);
+            GameSession.Instance.SpawnFloatingText(
                 other.transform.position + Vector3.up * 0.8f,
                 $"-{penalty}", new Color(1f, 0.3f, 0.2f));
         }

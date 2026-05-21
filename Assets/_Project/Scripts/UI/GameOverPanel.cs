@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 // Панель конца раунда. Логика отправки счёта:
 //
-//   1. Раунд закончен → подписываемся на GameManager.GameOver.
+//   1. Раунд закончен → подписываемся на GameSession.GameOver.
 //   2. Если у игрока нет никнейма — открываем NameInputDialog, ждём успешного
 //      ответа от сервера (имя записано в platformer:names), после чего шлём
 //      счёт.
@@ -31,8 +31,8 @@ public class GameOverPanel : MonoBehaviour
     void OnEnable()
     {
         if (root != null) root.SetActive(false);
-        if (GameManager.Instance != null)
-            GameManager.Instance.GameOver += OnGameOver;
+        if (GameSession.Instance != null)
+            GameSession.Instance.GameOver += OnGameOver;
         if (restartButton != null) restartButton.onClick.AddListener(Restart);
         if (menuButton != null) menuButton.onClick.AddListener(ToMenu);
         if (leaderboardButton != null)
@@ -41,15 +41,15 @@ public class GameOverPanel : MonoBehaviour
 
     void OnDisable()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.GameOver -= OnGameOver;
+        if (GameSession.Instance != null)
+            GameSession.Instance.GameOver -= OnGameOver;
         if (restartButton != null) restartButton.onClick.RemoveListener(Restart);
         if (menuButton != null) menuButton.onClick.RemoveListener(ToMenu);
         if (leaderboardButton != null)
             leaderboardButton.onClick.RemoveListener(ToLeaderboard);
     }
 
-    void OnGameOver(int finalScore, GameManager.EndReason reason)
+    void OnGameOver(int finalScore, GameSession.EndReason reason)
     {
         if (root != null) root.SetActive(true);
         if (titleText != null) titleText.text = TitleFor(reason);
@@ -64,16 +64,13 @@ public class GameOverPanel : MonoBehaviour
         //    Если игрок закрыл диалог «Отмена» — счёт не отправляется.
         if (!PlayerIdentity.HasName())
         {
-            if (nameDialog != null)
-                nameDialog.OpenForFirstTime(
-                    onSuccess: _ => SubmitScore(finalScore),
-                    onCancel: () =>
-                    {
-                        if (recordText != null)
-                            recordText.text = "Счёт не сохранён";
-                    });
-            else
-                SubmitScore(finalScore);    // диалога нет — шлём без имени
+            nameDialog.OpenForFirstTime(
+                onSuccess: _ => SubmitScore(finalScore),
+                onCancel: () =>
+                {
+                    if (recordText != null)
+                        recordText.text = "Счёт не сохранён";
+                });
         }
         else
         {
@@ -104,11 +101,11 @@ public class GameOverPanel : MonoBehaviour
         });
     }
 
-    static string TitleFor(GameManager.EndReason reason) => reason switch
+    static string TitleFor(GameSession.EndReason reason) => reason switch
     {
-        GameManager.EndReason.Timeout => "Время вышло",
-        GameManager.EndReason.Fell => "Вы упали",
-        GameManager.EndReason.Finished => "Финиш!",
+        GameSession.EndReason.Timeout => "Время вышло",
+        GameSession.EndReason.Fell => "Вы упали",
+        GameSession.EndReason.Finished => "Финиш!",
         _ => "Раунд окончен",
     };
 

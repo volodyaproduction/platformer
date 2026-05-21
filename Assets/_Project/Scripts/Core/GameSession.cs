@@ -5,10 +5,12 @@ using UnityEngine.SceneManagement;
 
 // Центральная игровая сессия раунда: счёт, 30-секундный таймер, события.
 // Раунд заканчивается по таймауту, падению в яму или достижению финиша.
+// Имя класса согласовано с шутером — там тот же синглтон называется
+// GameSession (см. shooter/Assets/_Project/Scripts/Core/GameSession.cs).
 [DefaultExecutionOrder(-100)]
-public class GameManager : MonoBehaviour
+public class GameSession : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
+    public static GameSession Instance { get; private set; }
 
     public enum EndReason { Timeout, Fell, Finished }
 

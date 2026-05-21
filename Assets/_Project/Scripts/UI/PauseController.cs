@@ -34,16 +34,16 @@ public class PauseController : MonoBehaviour
     public void RequestPause()
     {
         if (paused) return;
-        var gm = GameManager.Instance;
-        if (gm == null || !gm.IsPlaying) return;
+        var session = GameSession.Instance;
+        if (session == null || !session.IsPlaying) return;
         Toggle();
     }
 
     void Update()
     {
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
-        var gm = GameManager.Instance;
-        if (gm == null || !gm.IsPlaying) return;
+        var session = GameSession.Instance;
+        if (session == null || !session.IsPlaying) return;
         Toggle();
     }
 
@@ -52,8 +52,8 @@ public class PauseController : MonoBehaviour
         // Авто-пауза при уходе со вкладки: иначе Unity замораживает Update и
         // игра «висит». По возвращении игрок видит явный экран паузы.
         if (hasFocus || paused) return;
-        var gm = GameManager.Instance;
-        if (gm == null || !gm.IsPlaying) return;
+        var session = GameSession.Instance;
+        if (session == null || !session.IsPlaying) return;
         Toggle();
     }
 

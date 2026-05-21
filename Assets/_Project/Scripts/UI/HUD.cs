@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// HUD: текст счёта монет + текст таймера. Подписан на события GameManager.
+// HUD: текст счёта монет + текст таймера. Подписан на события GameSession.
 public class HUD : MonoBehaviour
 {
     [Header("UI-элементы")]
@@ -10,20 +10,20 @@ public class HUD : MonoBehaviour
 
     void OnEnable()
     {
-        var gm = GameManager.Instance;
-        if (gm == null) return;
-        gm.ScoreChanged += OnScoreChanged;
-        gm.TimeChanged += OnTimeChanged;
-        OnScoreChanged(gm.Score);
-        OnTimeChanged(gm.TimeLeft);
+        var session = GameSession.Instance;
+        if (session == null) return;
+        session.ScoreChanged += OnScoreChanged;
+        session.TimeChanged += OnTimeChanged;
+        OnScoreChanged(session.Score);
+        OnTimeChanged(session.TimeLeft);
     }
 
     void OnDisable()
     {
-        var gm = GameManager.Instance;
-        if (gm == null) return;
-        gm.ScoreChanged -= OnScoreChanged;
-        gm.TimeChanged -= OnTimeChanged;
+        var session = GameSession.Instance;
+        if (session == null) return;
+        session.ScoreChanged -= OnScoreChanged;
+        session.TimeChanged -= OnTimeChanged;
     }
 
     void OnScoreChanged(int score)

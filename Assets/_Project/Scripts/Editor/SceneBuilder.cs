@@ -70,8 +70,8 @@ public static class SceneBuilder
         var playerCtrl = player.GetComponent<PlayerController>();
         var ui = CreateUI(playerCtrl);
 
-        // 14. GameManager + HUD: один объект, HUD подписан на события.
-        CreateGameManager(ui.scoreText, ui.timerText, floatingTextPrefab);
+        // 14. GameSession + HUD: один объект, HUD подписан на события.
+        CreateGameSession(ui.scoreText, ui.timerText, floatingTextPrefab);
 
         // Пауза по ESC: оверлей с кнопками «Продолжить» / «В меню»
         var canvasTr = GameObject.Find("Canvas").transform;
@@ -955,30 +955,30 @@ public static class SceneBuilder
         return btn;
     }
 
-    // ===== GameManager + HUD =====
+    // ===== GameSession + HUD =====
 
-    static GameManager CreateGameManager(Text scoreText, Text timerText,
+    static GameSession CreateGameSession(Text scoreText, Text timerText,
         GameObject floatingTextPrefab)
     {
-        var go = new GameObject("GameManager");
-        var gm = go.AddComponent<GameManager>();
+        var go = new GameObject("GameSession");
+        var session = go.AddComponent<GameSession>();
 
         var audio = go.AddComponent<AudioSource>();
         audio.playOnAwake = false;
         audio.volume = 0.1f;
-        gm.sfxSource = audio;
-        gm.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
-        gm.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");
-        gm.floatingTextPrefab = floatingTextPrefab;
+        session.sfxSource = audio;
+        session.coinClip = LoadClip("Assets/_Project/Audio/coin.wav");
+        session.victoryClip = LoadClip("Assets/_Project/Audio/victory.wav");
+        session.floatingTextPrefab = floatingTextPrefab;
 
-        // HUD на том же объекте — подписывается на события GameManager
+        // HUD на том же объекте — подписывается на события GameSession
         var hud = go.AddComponent<HUD>();
         hud.scoreText = scoreText;
         hud.timerText = timerText;
 
-        EditorUtility.SetDirty(gm);
+        EditorUtility.SetDirty(session);
         EditorUtility.SetDirty(hud);
-        return gm;
+        return session;
     }
 
     // ===== Утилиты =====
