@@ -5,8 +5,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-// Программно собирает MainMenu.unity: заголовок «2D-платформер» и
-// кнопка «Старт», грузящая Main.unity. Цвет фона — голубое небо как в игре.
+// Программно собирает MainMenu.unity: заголовок «2D-платформер», кнопки
+// Старт / Никнейм / Лидерборд, диалог ввода никнейма (для смены) и
+// LeaderboardClient с DontDestroyOnLoad — он переживёт смены сцен.
 public static class SceneBuilderMainMenu
 {
     public const string ScenePath = "Assets/_Project/Scenes/MainMenu.unity";
@@ -65,22 +66,44 @@ public static class SceneBuilderMainMenu
 
         // 7. Кнопка «Старт» — синяя, в тон restart-кнопке в игре
         menu.startButton = CreateButton(menuRoot.transform, "StartButton", font,
-            label: "Старт",
+            label: "Старт", labelOut: out _,
             color: new Color(0.2f, 0.6f, 0.9f),
-            anchoredPos: new Vector2(0, 60),
-            size: new Vector2(440, 110));
+            anchoredPos: new Vector2(0, 130),
+            size: new Vector2(520, 110));
 
-        // 7a. Кнопка «Лидерборд» — оранжевая, ниже «Старт»
+        // 7a. Кнопка «Никнейм» — серая, между Стартом и Лидербордом.
+        // Лейбл подменяется в MenuController.RefreshNameLabel(): «Указать
+        // никнейм» если имени нет, «Мой никнейм X» если есть. Ширина больше
+        // дефолтной — длинные Telegram-ники должны помещаться.
+        menu.nameButton = CreateButton(menuRoot.transform, "NameButton", font,
+            label: "Указать никнейм", labelOut: out var nameLabel,
+            color: new Color(0.45f, 0.45f, 0.5f),
+            anchoredPos: new Vector2(0, 0),
+            size: new Vector2(680, 100));
+        menu.nameButtonLabel = nameLabel;
+
+        // 7b. Кнопка «Лидерборд» — оранжевая, ниже
         menu.leaderboardButton = CreateButton(menuRoot.transform,
             "LeaderboardButton", font,
-            label: "Лидерборд",
+            label: "Лидерборд", labelOut: out _,
             color: new Color(0.9f, 0.6f, 0.2f),
-            anchoredPos: new Vector2(0, -70),
-            size: new Vector2(440, 100));
+            anchoredPos: new Vector2(0, -130),
+            size: new Vector2(520, 100));
+
+        // 7c. NameInputDialog поверх меню — переиспользуем фабрику из
+        // SceneBuilder (та же форма, что и в Main.unity)
+        var dialog = SceneBuilder.CreateNameDialog(canvasGO.transform);
+        menu.nameDialog = dialog;
 
         EditorUtility.SetDirty(menu);
 
-        // 8. Сохраняем сцену и регистрируем как первую в BuildSettings
+        // 8. LeaderboardClient — singleton с DontDestroyOnLoad. Создаём
+        // здесь, в первой сцене Build Settings, чтобы клиент жил всё время
+        // сессии и был доступен из Main и Leaderboard.
+        var lbGO = new GameObject("LeaderboardClient");
+        lbGO.AddComponent<LeaderboardClient>();
+
+        // 9. Сохраняем сцену и регистрируем как первую в BuildSettings
         EnsureDir(System.IO.Path.GetDirectoryName(ScenePath));
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -119,7 +142,8 @@ public static class SceneBuilderMainMenu
     }
 
     static Button CreateButton(Transform parent, string name, Font font,
-        string label, Color color, Vector2 anchoredPos, Vector2 size)
+        string label, out Text labelOut, Color color,
+        Vector2 anchoredPos, Vector2 size)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -148,6 +172,7 @@ public static class SceneBuilderMainMenu
         trt.offsetMin = Vector2.zero;
         trt.offsetMax = Vector2.zero;
 
+        labelOut = t;
         return btn;
     }
 

@@ -22,56 +22,10 @@ public static class SceneBuilder
     static readonly Vector2Int[] GroundTiles = BuildGroundTiles();
     static readonly Vector2Int[] PlatformTiles = BuildPlatformTiles();
 
-    // 3. Координаты монеток в мире. Монета — спрайт 128x128 при PPU=128,
-    // т.е. 1x1 unit, центр на transform. Чтобы нижний край касался верха
-    // тайла (y=1 для тайла земли на y=0), центр должен быть на y=1.5.
-    // Уровень растянут до x≈100 — на 30-сек раунд ~22 монет.
-    static readonly Vector2[] CoinPositions = new Vector2[]
-    {
-        new Vector2(2.5f, 1.5f),
-        new Vector2(5.5f, 4.5f),    // на платформе y=3
-        new Vector2(12.5f, 1.5f),
-        new Vector2(16f, 5.5f),     // на платформе y=4 над провалом
-        new Vector2(21.5f, 6.5f),   // на самой высокой платформе y=5
-        new Vector2(24.5f, 1.5f),
-        new Vector2(29.5f, 1.5f),
-        new Vector2(32.5f, 1.5f),
-        new Vector2(31.5f, 5.5f),   // на платформе y=4
-        new Vector2(37f, 5.5f),     // на платформе y=4 над ямой
-        new Vector2(41.5f, 6.5f),   // на платформе y=5
-        new Vector2(43f, 1.5f),
-        new Vector2(49.5f, 4.5f),   // на платформе y=3
-        new Vector2(54f, 5.5f),     // на платформе y=4 над провалом
-        new Vector2(57.5f, 1.5f),
-        new Vector2(60.5f, 1.5f),
-        new Vector2(63f, 6.5f),     // на финальной высокой платформе y=5
-        // Удлинение (x ≈ 70..100)
-        new Vector2(73f, 1.5f),
-        new Vector2(78f, 5.5f),     // на платформе y=4 над ямой 76..78
-        new Vector2(82.5f, 6.5f),   // на платформе y=5
-        new Vector2(87.5f, 5.5f),   // на платформе y=4 над ямой
-        new Vector2(94f, 6.5f),     // на финальной высокой платформе y=5
-    };
-
-    // 3a. Координаты шипов-ловушек. Размещены на земле — игрок прыгает над
-    // ними (классика платформера). Y=1.19 = верх тайла земли (y=1) +
-    // половина высоты спрайта шипов (0.375 unit при 96×48 px и PPU=128).
-    // Подальше от монет, чтобы не было overlap (фикс по прошлому ревью).
-    static readonly Vector2[] TrapPositions = new Vector2[]
-    {
-        new Vector2(13.5f, 1.19f),   // ground 11..14
-        new Vector2(21f,   1.19f),   // ground 18..24
-        new Vector2(40f,   1.19f),   // ground 39..44 — сразу после ямы
-        new Vector2(51f,   1.19f),   // ground 47..52
-        new Vector2(74.5f, 1.19f),   // ground 71..75 (новая зона удлинения)
-        new Vector2(93f,   1.19f),   // ground 89..100 — перед финишем
-    };
-
-    // 4. Стартовая точка и финиш. Игрок при стоянии на земле должен иметь
-    // transform.y ≈ 1.72 (центр спрайта 184px при PPU=128 = 1.44 unit).
-    // Стартуем чуть выше, чтобы было видно падение.
-    static readonly Vector2 PlayerStart = new Vector2(1f, 4f);
-    static readonly Vector2 FinishPosition = new Vector2(98.5f, 1.75f);
+    // 3. Координаты монет, шипов, стартовая точка и финиш вынесены в
+    //    runtime-класс LevelLayout — он же является источником MaxScore для
+    //    валидации на стороне клиента. Менять геометрию уровня → править
+    //    LevelLayout.cs, пересборка через build.sh подхватит изменения.
 
     [MenuItem("Tools/Build Main Scene")]
     public static void Build()
@@ -125,6 +79,12 @@ public static class SceneBuilder
 
         // 15. Связываем поля PlayerController после создания зависимостей
         ConfigurePlayerComponents(player);
+
+        // 15a. LeaderboardClient — singleton с DontDestroyOnLoad. Обычно
+        // создаётся в MainMenu (build index 0), но дублируем здесь на случай
+        // прямого захода на сцену Main: дубликаты сами уничтожатся в Awake.
+        var lbGO = new GameObject("LeaderboardClient");
+        lbGO.AddComponent<LeaderboardClient>();
 
         // 16. Сохраняем сцену и добавляем её в Build Settings
         EditorSceneManager.MarkSceneDirty(scene);
@@ -214,7 +174,7 @@ public static class SceneBuilder
     static GameObject CreatePlayer()
     {
         var go = new GameObject("Player");
-        go.transform.position = new Vector3(PlayerStart.x, PlayerStart.y, 0);
+        go.transform.position = new Vector3(LevelLayout.PlayerStart.x, LevelLayout.PlayerStart.y, 0);
         go.tag = "Player";
 
         // Спрайт
@@ -388,7 +348,7 @@ public static class SceneBuilder
     static void SpawnCoins(GameObject vfxPrefab)
     {
         var coinSprite = LoadSprite("Assets/_Project/Kenney/Items/coinGold.png");
-        foreach (var pos in CoinPositions)
+        foreach (var pos in LevelLayout.CoinPositions)
         {
             var go = new GameObject($"Coin_{pos.x:F0}_{pos.y:F0}");
             go.transform.position = pos;
@@ -414,7 +374,7 @@ public static class SceneBuilder
         // Спрайт «шипы» 96×48 px при PPU=128 = 0.75×0.375 unit. Pivot center.
         // Сгенерирован в AssetForge перед сборкой сцены.
         var sprite = LoadSprite("Assets/_Project/Art/Generated/spike.png");
-        foreach (var pos in TrapPositions)
+        foreach (var pos in LevelLayout.TrapPositions)
         {
             var go = new GameObject($"Trap_{pos.x:F0}_{pos.y:F0}");
             go.transform.position = pos;
@@ -464,7 +424,7 @@ public static class SceneBuilder
     static void CreateFinishZone()
     {
         var go = new GameObject("FinishZone");
-        go.transform.position = new Vector3(FinishPosition.x, FinishPosition.y, 0);
+        go.transform.position = new Vector3(LevelLayout.FinishPosition.x, LevelLayout.FinishPosition.y, 0);
 
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = LoadSprite("Assets/_Project/Kenney/Items/finishFlag.png");
@@ -672,19 +632,25 @@ public static class SceneBuilder
             fontSize: 96, anchoredPos: new Vector2(0, 200),
             size: new Vector2(900, 160));
         var scoreText = CreatePauseText(root.transform, "FinalScore",
-            "Монеты: 0", fontSize: 64, anchoredPos: new Vector2(0, 70),
+            "Монеты: 0", fontSize: 64, anchoredPos: new Vector2(0, 90),
             size: new Vector2(800, 100));
+
+        // Подпись «Новый рекорд: X» / «Твой рекорд: X» — заполняется после
+        // ответа сервера. До ответа показываем многоточие.
+        var recordText = CreatePauseText(root.transform, "RecordText",
+            "...", fontSize: 44, anchoredPos: new Vector2(0, 10),
+            size: new Vector2(800, 70));
 
         // Порядок кнопок как в shooter: Restart → Menu → Leaderboard
         var restart = CreatePauseButton(root.transform, "RestartButton",
             "Заново", new Color(0.2f, 0.6f, 0.9f),
-            anchoredPos: new Vector2(0, -50), size: new Vector2(420, 100));
+            anchoredPos: new Vector2(0, -90), size: new Vector2(420, 100));
         var menu = CreatePauseButton(root.transform, "MenuButton",
             "В меню", new Color(0.4f, 0.4f, 0.4f),
-            anchoredPos: new Vector2(0, -170), size: new Vector2(420, 90));
+            anchoredPos: new Vector2(0, -210), size: new Vector2(420, 90));
         var leaderboard = CreatePauseButton(root.transform, "LeaderboardButton",
             "Лидерборд", new Color(0.9f, 0.6f, 0.2f),
-            anchoredPos: new Vector2(0, -280), size: new Vector2(420, 80));
+            anchoredPos: new Vector2(0, -320), size: new Vector2(420, 80));
 
         root.SetActive(false);
 
@@ -695,6 +661,7 @@ public static class SceneBuilder
         panel.root = root;
         panel.titleText = title;
         panel.finalScoreText = scoreText;
+        panel.recordText = recordText;
         panel.restartButton = restart;
         panel.menuButton = menu;
         panel.leaderboardButton = leaderboard;
@@ -704,15 +671,25 @@ public static class SceneBuilder
         return panel;
     }
 
-    static NameInputDialog CreateNameDialog(Transform canvas)
+    // internal — чтобы SceneBuilderMainMenu мог переиспользовать диалог
+    // на сцене главного меню без дублирования кода.
+    internal static NameInputDialog CreateNameDialog(Transform canvas)
     {
+        // Унифицированная форма для двух режимов (первый ввод и смена имени):
+        // заголовок «Никнейм», читаемая подсказка про @Telegram, поле ввода,
+        // строка ошибки, кнопка OK. Текст подсказки в NameInputDialog.Hint.
         var root = CreateDimmedRoot(canvas, "NameInputPanel");
-        CreatePauseText(root.transform, "Title", "Новый рекорд!",
-            fontSize: 80, anchoredPos: new Vector2(0, 180),
+
+        CreatePauseText(root.transform, "Title", "Никнейм",
+            fontSize: 80, anchoredPos: new Vector2(0, 230),
             size: new Vector2(900, 120));
-        CreatePauseText(root.transform, "Subtitle", "Введите имя",
-            fontSize: 44, anchoredPos: new Vector2(0, 80),
-            size: new Vector2(700, 80));
+
+        // Подсказка с переносом: fontSize 30, центрирование UpperCenter,
+        // достаточная высота под 2-3 строки.
+        var hint = CreateWrapText(root.transform, "Hint",
+            "Подсказка будет проставлена в NameInputDialog.Open()",
+            fontSize: 30, anchoredPos: new Vector2(0, 90),
+            size: new Vector2(900, 140));
 
         // InputField (legacy UGUI)
         var fieldGO = new GameObject("NameField");
@@ -723,8 +700,8 @@ public static class SceneBuilder
         frt.anchorMin = new Vector2(0.5f, 0.5f);
         frt.anchorMax = new Vector2(0.5f, 0.5f);
         frt.pivot = new Vector2(0.5f, 0.5f);
-        frt.anchoredPosition = new Vector2(0, -30);
-        frt.sizeDelta = new Vector2(520, 80);
+        frt.anchoredPosition = new Vector2(0, -40);
+        frt.sizeDelta = new Vector2(620, 80);
 
         var textGO = new GameObject("Text");
         textGO.transform.SetParent(fieldGO.transform, false);
@@ -742,11 +719,17 @@ public static class SceneBuilder
 
         var field = fieldGO.AddComponent<InputField>();
         field.textComponent = fieldText;
-        field.characterLimit = 12;
+        field.characterLimit = 24;
+
+        // Строка ошибки/статуса между полем и кнопкой OK
+        var error = CreatePauseText(root.transform, "Error", "",
+            fontSize: 28, anchoredPos: new Vector2(0, -120),
+            size: new Vector2(700, 50));
+        error.color = new Color(1f, 0.6f, 0.4f);
 
         var submit = CreatePauseButton(root.transform, "SubmitButton",
             "OK", new Color(0.2f, 0.6f, 0.9f),
-            anchoredPos: new Vector2(0, -140), size: new Vector2(280, 90));
+            anchoredPos: new Vector2(0, -200), size: new Vector2(280, 90));
 
         root.SetActive(false);
 
@@ -756,8 +739,32 @@ public static class SceneBuilder
         dialog.root = root;
         dialog.nameField = field;
         dialog.submitButton = submit;
+        dialog.hintText = hint;
+        dialog.errorText = error;
         EditorUtility.SetDirty(dialog);
         return dialog;
+    }
+
+    static Text CreateWrapText(Transform parent, string name, string content,
+        int fontSize, Vector2 anchoredPos, Vector2 size)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var t = go.AddComponent<Text>();
+        t.text = content;
+        t.font = LoadFont();
+        t.fontSize = fontSize;
+        t.color = Color.white;
+        t.alignment = TextAnchor.UpperCenter;
+        t.horizontalOverflow = HorizontalWrapMode.Wrap;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = anchoredPos;
+        rt.sizeDelta = size;
+        return t;
     }
 
     static GameObject CreateDimmedRoot(Transform parent, string name)

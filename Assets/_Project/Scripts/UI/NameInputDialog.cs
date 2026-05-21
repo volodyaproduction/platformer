@@ -2,25 +2,37 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Диалог ввода имени для лидерборда. Открывается из GameOverPanel при
-// попадании в топ-5. Имя сохраняется в PlayerPrefs[last_player_name] для
-// подсказки при следующем запуске.
+// Диалог ввода/смены никнейма для лидерборда. Одна и та же форма в двух
+// сценариях:
+//   OpenForFirstTime — открывается после первого раунда, если PlayerIdentity
+//     ещё не имеет имени. После успешной отправки на сервер вызывает callback
+//     с выбранным никнеймом; вызывающий код сразу шлёт счёт.
+//   OpenForChange — открывается из главного меню для смены уже выбранного
+//     никнейма. Поле предзаполнено текущим именем.
+//
+// Уникальность никнейма проверяется на сервере (HTTP 409 → ошибка «занято»).
+// Подсказка одинаковая в обоих режимах: пригласить указать Telegram-ник с `@`,
+// чтобы рядом с записью в лидерборде появилась кликабельная ссылка t.me/<nick>.
 public class NameInputDialog : MonoBehaviour
 {
     [Header("UI")]
     public GameObject root;
     public InputField nameField;
     public Button submitButton;
+    public Text hintText;
+    public Text errorText;
 
-    const string PrefKey = "last_player_name";
-    const int MaxLen = 12;
+    Action<string> onSuccess;
 
-    Action<string> onSubmit;
+    const string Hint =
+        "Поставь @ впереди — твой ник станет ссылкой на Telegram, " +
+        "и из лидерборда к тебе смогут постучаться.";
 
     void OnEnable()
     {
         if (root != null) root.SetActive(false);
         if (submitButton != null) submitButton.onClick.AddListener(HandleSubmit);
+        if (errorText != null) errorText.text = string.Empty;
     }
 
     void OnDisable()
@@ -28,25 +40,95 @@ public class NameInputDialog : MonoBehaviour
         if (submitButton != null) submitButton.onClick.RemoveListener(HandleSubmit);
     }
 
-    public void Open(Action<string> callback)
+    public void OpenForFirstTime(Action<string> callback)
     {
+        Open(initialName: string.Empty, callback);
+    }
+
+    public void OpenForChange(Action<string> callback)
+    {
+        Open(initialName: PlayerIdentity.GetName(), callback);
+    }
+
+    void Open(string initialName, Action<string> callback)
+    {
+        onSuccess = callback;
         if (root != null) root.SetActive(true);
-        if (nameField != null)
-            nameField.text = PlayerPrefs.GetString(PrefKey, "Игрок");
-        onSubmit = callback;
+        if (nameField != null) nameField.text = initialName ?? string.Empty;
+        if (hintText != null) hintText.text = Hint;
+        if (errorText != null) errorText.text = string.Empty;
+        SetInteractable(true);
     }
 
     void HandleSubmit()
     {
-        var raw = nameField != null ? nameField.text : "Игрок";
-        var name = string.IsNullOrWhiteSpace(raw) ? "Игрок" : raw.Trim();
-        if (name.Length > MaxLen) name = name.Substring(0, MaxLen);
+        var raw = nameField != null ? nameField.text : string.Empty;
+        var name = (raw ?? string.Empty).Trim();
 
-        PlayerPrefs.SetString(PrefKey, name);
-        PlayerPrefs.Save();
+        // 1. Локальная валидация — серверный ответ для тривиальных проблем
+        //    тратить впустую не будем
+        if (name.Length < 2)
+        {
+            ShowError("Никнейм слишком короткий");
+            return;
+        }
+        if (name.Length > 24)
+        {
+            ShowError("Никнейм слишком длинный (макс 24)");
+            return;
+        }
+        if (name.IndexOfAny(new[] { ' ', '\t', '\n', '\r' }) >= 0)
+        {
+            ShowError("Без пробелов");
+            return;
+        }
 
-        if (root != null) root.SetActive(false);
-        onSubmit?.Invoke(name);
-        onSubmit = null;
+        // 2. Запрос на сервер. Кнопка блокируется на время запроса.
+        SetInteractable(false);
+        if (errorText != null) errorText.text = "Проверяем...";
+
+        if (LeaderboardClient.Instance == null)
+        {
+            ShowError("Нет связи с сервером");
+            SetInteractable(true);
+            return;
+        }
+
+        LeaderboardClient.Instance.ChangeName(name, OnServerResponse);
+
+        void OnServerResponse(LeaderboardClient.ChangeNameResponse resp)
+        {
+            if (resp != null && resp.ok)
+            {
+                PlayerIdentity.SetName(name);
+                if (root != null) root.SetActive(false);
+                var cb = onSuccess;
+                onSuccess = null;
+                cb?.Invoke(name);
+                return;
+            }
+
+            // 3. Локализация серверных ошибок
+            var msg = resp != null ? resp.error : "network_error";
+            ShowError(msg switch
+            {
+                "name_taken" => "Этот ник уже занят, выбери другой",
+                "invalid_name" => "Никнейм некорректный",
+                "rate_limited" => "Слишком часто, подожди",
+                _ => "Нет связи с сервером",
+            });
+            SetInteractable(true);
+        }
+    }
+
+    void ShowError(string msg)
+    {
+        if (errorText != null) errorText.text = msg;
+    }
+
+    void SetInteractable(bool on)
+    {
+        if (submitButton != null) submitButton.interactable = on;
+        if (nameField != null) nameField.interactable = on;
     }
 }

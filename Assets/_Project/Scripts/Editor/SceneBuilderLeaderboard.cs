@@ -5,8 +5,11 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-// Сборка сцены Leaderboard.unity: топ-5 (rank/name/score) + кнопки В меню и
-// Очистить. Сцена попадает в BuildSettings последней.
+// Сборка сцены Leaderboard.unity: скролл-список глобального лидерборда.
+// Строки рендерит LeaderboardView в рантайме из ответа сервера — здесь
+// собираем только каркас: камера, заголовок, шапку, ScrollRect (Viewport +
+// Content с VerticalLayoutGroup + ContentSizeFitter), статус-текст и кнопку
+// «В меню».
 public static class SceneBuilderLeaderboard
 {
     public const string ScenePath = "Assets/_Project/Scenes/Leaderboard.unity";
@@ -50,7 +53,73 @@ public static class SceneBuilderLeaderboard
             new Vector2(0, -50), new Vector2(900, 160),
             TextAnchor.MiddleCenter);
 
-        // 4. Контейнер с LeaderboardView
+        // 4. Шапка таблицы (#, Имя, Очки) — фикс над списком
+        MkText(ct, "HeaderRank",  font, 36, "#",     Center(), Center(),
+            new Vector2(-580, 320), new Vector2(120, 50), TextAnchor.MiddleCenter);
+        MkText(ct, "HeaderName",  font, 36, "Имя",   Center(), Center(),
+            new Vector2(-170, 320), new Vector2(600, 50), TextAnchor.MiddleLeft);
+        MkText(ct, "HeaderScore", font, 36, "Очки",  Center(), Center(),
+            new Vector2(440, 320),  new Vector2(220, 50), TextAnchor.MiddleRight);
+
+        // 5. ScrollRect: Viewport (с RectMask2D) → Content (VLG + Fitter).
+        //    LeaderboardView рендерит строки в content в OnEnable.
+        var scrollGO = new GameObject("Scroll", typeof(RectTransform));
+        scrollGO.transform.SetParent(ct, false);
+        var scrollRT = scrollGO.GetComponent<RectTransform>();
+        scrollRT.anchorMin = Center();
+        scrollRT.anchorMax = Center();
+        scrollRT.pivot = Center();
+        scrollRT.anchoredPosition = new Vector2(0, -20);
+        scrollRT.sizeDelta = new Vector2(1500, 600);
+        var scroll = scrollGO.AddComponent<ScrollRect>();
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Elastic;
+
+        var viewportGO = new GameObject("Viewport", typeof(RectTransform));
+        viewportGO.transform.SetParent(scrollGO.transform, false);
+        var viewportRT = viewportGO.GetComponent<RectTransform>();
+        viewportRT.anchorMin = Vector2.zero;
+        viewportRT.anchorMax = Vector2.one;
+        viewportRT.offsetMin = Vector2.zero;
+        viewportRT.offsetMax = Vector2.zero;
+        // RectMask2D (а не Mask + Image): у Mask требуется Image на том же
+        // объекте, что превращает Viewport в Graphic и конфликтует с другим
+        // Image-фоном (в шутере это уже наступали).
+        viewportGO.AddComponent<RectMask2D>();
+        scroll.viewport = viewportRT;
+
+        var contentGO = new GameObject("Content", typeof(RectTransform));
+        contentGO.transform.SetParent(viewportGO.transform, false);
+        var contentRT = contentGO.GetComponent<RectTransform>();
+        contentRT.anchorMin = new Vector2(0, 1);
+        contentRT.anchorMax = new Vector2(1, 1);
+        contentRT.pivot = new Vector2(0.5f, 1);
+        contentRT.offsetMin = new Vector2(0, 0);
+        contentRT.offsetMax = new Vector2(0, 0);
+        var vlg = contentGO.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 6;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        var fitter = contentGO.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        scroll.content = contentRT;
+
+        // 6. Статус-текст («Загрузка...», «нет связи», «пусто»). Лежит
+        //    поверх viewport, но скрывается когда строки приходят.
+        var status = MkText(ct, "StatusText", font, 40,
+            "Загрузка...", Center(), Center(),
+            new Vector2(0, -20), new Vector2(1200, 80),
+            TextAnchor.MiddleCenter);
+
+        // 7. Кнопка «В меню» внизу
+        var back = MkButton(ct, "BackButton", font, "В меню",
+            new Color(0.2f, 0.6f, 0.9f),
+            new Vector2(0, -440), new Vector2(360, 100));
+
+        // 8. Контроллер вьюхи
         var viewGO = new GameObject("LeaderboardView", typeof(RectTransform));
         viewGO.transform.SetParent(ct, false);
         var viewRT = viewGO.GetComponent<RectTransform>();
@@ -59,45 +128,19 @@ public static class SceneBuilderLeaderboard
         viewRT.offsetMin = Vector2.zero;
         viewRT.offsetMax = Vector2.zero;
         var view = viewGO.AddComponent<LeaderboardView>();
-        view.rankTexts = new Text[LeaderboardSaveSystem.TopSize];
-        view.nameTexts = new Text[LeaderboardSaveSystem.TopSize];
-        view.scoreTexts = new Text[LeaderboardSaveSystem.TopSize];
-
-        // 5. Шапка таблицы (#, Имя, Очки)
-        MkText(ct, "HeaderRank",  font, 36, "#",     Center(), Center(),
-            new Vector2(-340, 280), new Vector2(120, 50), TextAnchor.MiddleCenter);
-        MkText(ct, "HeaderName",  font, 36, "Имя",   Center(), Center(),
-            new Vector2(-50, 280),  new Vector2(420, 50), TextAnchor.MiddleLeft);
-        MkText(ct, "HeaderScore", font, 36, "Очки",  Center(), Center(),
-            new Vector2(320, 280),  new Vector2(220, 50), TextAnchor.MiddleRight);
-
-        // 6. Строки (rank/name/score)
-        float startY = 200f, rowH = 70f;
-        for (int i = 0; i < LeaderboardSaveSystem.TopSize; i++)
-        {
-            float y = startY - i * rowH;
-            view.rankTexts[i] = MkText(ct, $"Row{i}_Rank", font, 48, (i + 1) + ".",
-                Center(), Center(), new Vector2(-340, y),
-                new Vector2(120, 60), TextAnchor.MiddleCenter);
-            view.nameTexts[i] = MkText(ct, $"Row{i}_Name", font, 48, "—",
-                Center(), Center(), new Vector2(-50, y),
-                new Vector2(420, 60), TextAnchor.MiddleLeft);
-            view.scoreTexts[i] = MkText(ct, $"Row{i}_Score", font, 48, "—",
-                Center(), Center(), new Vector2(320, y),
-                new Vector2(220, 60), TextAnchor.MiddleRight);
-        }
-
-        // 7. Кнопки внизу: Назад и Очистить
-        view.backButton = MkButton(ct, "BackButton", font, "В меню",
-            new Color(0.2f, 0.6f, 0.9f),
-            new Vector2(-180, -400), new Vector2(320, 100));
-        view.clearButton = MkButton(ct, "ClearButton", font, "Очистить",
-            new Color(0.55f, 0.35f, 0.35f),
-            new Vector2(180, -400), new Vector2(280, 100));
+        view.content = contentRT;
+        view.statusText = status;
+        view.backButton = back;
+        view.font = font;
 
         EditorUtility.SetDirty(view);
 
-        // 8. Сохраняем сцену и добавляем в BuildSettings
+        // 9. LeaderboardClient (на случай прямого захода на эту сцену —
+        //    в обычном флоу клиент уже жив, ему дубликат не страшен).
+        var lbGO = new GameObject("LeaderboardClient");
+        lbGO.AddComponent<LeaderboardClient>();
+
+        // 10. Сохраняем сцену и добавляем в BuildSettings
         EnsureDir(System.IO.Path.GetDirectoryName(ScenePath));
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
